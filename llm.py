@@ -2,7 +2,6 @@ import pandas as pd
 import sqlite3
 
 from langchain_community.document_loaders import DataFrameLoader
-from langchain_core.documents import Document
 from dotenv import load_dotenv
 
 load_dotenv()
