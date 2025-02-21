@@ -35,6 +35,7 @@ def load(case):
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
         return docs
+    
     elif case == "ref":
         conn = sqlite3.connect("fridges.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
@@ -45,12 +46,13 @@ def load(case):
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
         return docs
+    
     else:
-        conn = sqlite3.connect("만개.db") # 이름 맞게 수정 필요
-        df = pd.read_sql("SELECT * FROM recipes", conn)
+        conn = sqlite3.connect("data.db")
+        df = pd.read_sql("SELECT * FROM processed_data", conn)
 
-        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe'] + " " + df['category']
-        df.drop(columns=['name', 'ingredients', 'recipes'], inplace=True)
+        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe'] + " " + df['category'] + " " + df['info'] + " " + df['intro']
+        df.drop(columns=['name', 'ingredients', 'recipe', "info", "intro"], inplace=True)
         conn.close()
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
@@ -63,9 +65,9 @@ def func(query=None):
     ## load
     docs = load("func")
 
-    ## vecotrdb 저장 -> 최초 일회만 실행
-    fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 편스토랑 임베딩 후 db
-    fais.save_local("fun_faiss") # 로컬 저장
+    # ## vecotrdb 저장 -> 최초 일회만 실행
+    # fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 편스토랑 임베딩 후 db
+    # fais.save_local("fun_faiss") # 로컬 저장
     
     ## vecotrdb 로드
     fais = FAISS.load_local("fun_faiss", embeddings, allow_dangerous_deserialization=True) # 로컬 저장 로드
@@ -74,8 +76,6 @@ def func(query=None):
     bm25_retr = BM25Retriever.from_documents(docs)
     bm25_retr.k = 3
     fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-    # fensemble = EnsembleRetriever(retrievers=[fbm25_retr, fais_retr], weights=[0.5, 0.5],)
-    # res = fensemble.invoke(query)
     return bm25_retr, fais_retr
 
 def ref(query=None):
@@ -85,9 +85,9 @@ def ref(query=None):
     ## load
     docs = load("ref")
 
-    ## vectordb 저장
-    fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 냉부 임베딩 후 db
-    fais.save_local("ref_faiss") # 로컬 저장
+    # ## vectordb 저장 -> 최초 일회만 실행
+    # fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 냉부 임베딩 후 db
+    # fais.save_local("ref_faiss") # 로컬 저장
 
     ## vectordb 로드
     fais = FAISS.load_local("ref_faiss", embeddings, allow_dangerous_deserialization=True)
@@ -96,37 +96,39 @@ def ref(query=None):
     bm25_retr = BM25Retriever.from_documents(docs)
     bm25_retr.k = 3
     fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-    # rensemble = EnsembleRetriever(retrievers=[bm25_retr, fais_retr], weights=[0.5, 0.5],)
-    # res = rensemble.invoke(query)
     return bm25_retr, fais_retr
 
-# def man(query=None):
-#     '''
-#     만개의 레시피 retriever
-#     '''
-#     ## load
-#     docs = load("man")
+def man(query=None):
+    '''
+    만개의 레시피 retriever
+    '''
+    ## load
+    docs = load("man")
 
-#     ## vectordb 저장
-#     fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 만개 임베딩 후 db
-#     fais.save_local("man_faiss") # 로컬 저장
+    ## vectordb 저장 -> 최초 일회만 실행
+    fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 만개 임베딩 후 db
+    fais.save_local("man_faiss") # 로컬 저장
 
-#     # vectordb 로드
-#     fais = FAISS.load_local("man_faiss", embeddings, allow_dangerous_deserialization=True)
+    # vectordb 로드
+    fais = FAISS.load_local("man_faiss", embeddings, allow_dangerous_deserialization=True)
 
-#     ## bm25 retriever, faiss retriever 앙상블
-#     bm25_retr = BM25Retriever.from_documents(docs)
-#     bm25_retr.k = 3
-#     fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-#     # mensemble = EnsembleRetriever(retrievers=[bm25_retr, fais_retr], weights=[0.5, 0.5],)
-#     # res = mensemble.invoke(query)
-#     return bm25_retr, fais_retr
+    ## bm25 retriever, faiss retriever 앙상블
+    bm25_retr = BM25Retriever.from_documents(docs)
+    bm25_retr.k = 3
+    fais_retr = fais.as_retriever(search_kwargs={"k": 3})
+    return bm25_retr, fais_retr
 
 def mkch():
     # Prompt Template 생성
     messages = [
             ("ai", """
             너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
+
+            요리 소개할 때 이름을 언급한 뒤, 한 줄 정도 간단한 요리 소개를 하고 재료를 알려줘.
+            사용자가 네가 추천해준 요리 안에서 요리를 선택하면 사진 혹은 영상과 함께 레시피를 알려줘.
+            만약 사진 혹은 영상이 없으면, 사진이나 영상은 알려주지마.
+            사용자의 질문에서 적절한 요리를 찾지 못하면 다시 물어봐서 정보를 좀 더 수집한 뒤 답변해.
+            답변을 context에서 찾을 수 없으면 모른다고 대답해.
     {context}"""),
             MessagesPlaceholder(variable_name="history", optional=True),
             ("human", "{question}"),
@@ -140,8 +142,9 @@ def mkch():
     # retriever 로드 => 추후 함수 선택 코드 넣어야 함
     rbm25_retr, rfais_retr = ref()
     fbm25_retr, ffais_retr = func()
+    mbm25_retr, mfais_retr = man()
 
-    retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr], weights=[0.25, 0.25, 0.25, 0.25],)
+    retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],)
 
     # Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
     chain = RunnableLambda(lambda x:x['question']) | {"context": retriever, "question":RunnablePassthrough() , "history": RunnableLambda(load_history)}  | prompt_template | model | StrOutputParser()
