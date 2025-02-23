@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>홈페이지</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            text-decoration: none;
+            color: white;
+            background-color: #007bff;
+            border-radius: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>홈페이지</h1>
+
+    {% if request.user.is_authenticated %}
+        <p>환영합니다, {{ request.user.username }}님!</p>
+        <a href="{% url 'profile' %}" class="btn">내 프로필</a>
+        <a href="{% url 'logout' %}" class="btn" style="background-color: red;">로그아웃</a>
+    {% else %}
+        <a href="{% url 'login' %}" class="btn">로그인</a>
+        <a href="{% url 'signup' %}" class="btn" style="background-color: green;">회원가입</a>
+    {% endif %}
+</body>
+</html>

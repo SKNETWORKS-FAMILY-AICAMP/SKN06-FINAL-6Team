@@ -1,0 +1,57 @@
+<h2>회원가입</h2>
+<form method="post">
+    {% csrf_token %}
+
+    <label for="id_username">아이디:</label>
+    {{ form.username }} <br>
+
+    <label for="id_email">이메일:</label>
+    {{ form.email }} <br>
+
+    <label for="id_full_name">본명:</label>
+    {{ form.full_name }} <br>
+
+    <label for="id_nickname">별명:</label>
+    {{ form.nickname }} <br>
+
+    <label for="id_birthdate">생년월일:</label>
+    {{ form.birthdate }} <br>
+
+    <label for="id_password1">비밀번호:</label>
+    <div style="display: flex; align-items: center;">
+        {{ form.password1 }}
+        <button type="button" 
+                onmousedown="showPassword('id_password1')" 
+                onmouseup="hidePassword('id_password1')" 
+                onmouseleave="hidePassword('id_password1')"
+                style="margin-left: 5px; background: none; border: none; cursor: pointer;">
+            🔒
+        </button>
+    </div>
+    <br>
+
+    <label for="id_password2">비밀번호 확인:</label>
+    <div style="display: flex; align-items: center;">
+        {{ form.password2 }}
+        <button type="button" 
+                onmousedown="showPassword('id_password2')" 
+                onmouseup="hidePassword('id_password2')" 
+                onmouseleave="hidePassword('id_password2')"
+                style="margin-left: 5px; background: none; border: none; cursor: pointer;">
+            🔒
+        </button>
+    </div>
+    <br>
+
+    <button type="submit">회원가입</button>
+</form>
+
+<script>
+    function showPassword(fieldId) {
+        document.getElementById(fieldId).type = "text";
+    }
+
+    function hidePassword(fieldId) {
+        document.getElementById(fieldId).type = "password";
+    }
+</script>
