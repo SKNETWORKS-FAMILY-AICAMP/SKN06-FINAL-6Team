@@ -169,11 +169,18 @@
                 {% if request.user.profile_picture %}
                     <img src="{{ request.user.profile_picture.url }}" alt="프로필 사진" class="profile-img">
                 {% else %}
+<<<<<<< HEAD
                     <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
                 {% endif %}
             </div>
 
 
+=======
+                    <img src="{% static 'imgs/default-profile.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
+
+>>>>>>> c97b3fdf651d7729abfe06fd79c2ba49a6df4c45
             <!-- ✅ 드롭다운 메뉴 -->
             <div class="dropdown-menu" id="dropdown-menu">
                 <a href="{% url 'mypage' %}">내 프로필</a>

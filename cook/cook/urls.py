@@ -25,7 +25,10 @@ urlpatterns = [
     path('cookapp/', include('cookapp.urls')),
     path('account/', include('account.urls')),
     path('', home, name='home'),
+<<<<<<< HEAD
     path("reviews/", include("review.urls"))
+=======
+>>>>>>> c97b3fdf651d7729abfe06fd79c2ba49a6df4c45
     
 ]
 
