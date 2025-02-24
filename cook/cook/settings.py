@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'cookapp',
     'account',
     'review',
-    'django_extensions'
+    'django_extensions',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -127,8 +128,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, "cook", "static")]
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # 로그인 후 이동할 기본 페이지
-LOGIN_REDIRECT_URL = '/account/mypage/'
+LOGIN_REDIRECT_URL = '/chat/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 
 # 로그인 페이지 URL

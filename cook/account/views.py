@@ -32,7 +32,7 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('profile')  # 로그인 후 프로필 페이지로 이동
+            return redirect('chat')  # 로그인 후 프로필 페이지로 이동
     else:
         form = AuthenticationForm()
     return render(request, 'account/login.html', {'form': form})

@@ -3,34 +3,56 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>홈페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅</title>
     <style>
         body {
-            text-align: center;
+            display: flex;
             font-family: Arial, sans-serif;
             position: relative;
         }
-
-        /* 버튼 스타일 */
+        #sidebar {
+            width: 250px;
+            padding: 15px;
+            background-color: #f4f4f4;
+        }
+        #chat-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+        #chat-box {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        #input-box {
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 5px;
+        }
         .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 10px;
-            text-decoration: none;
+            padding: 5px 10px;
+            background-color: blue;
             color: white;
-            background-color: #007bff;
-            border-radius: 5px;
-            transition: background-color 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn.secondary {
+            background-color: gray;
         }
 
-        .btn:hover {
-            background-color: #0056b3;
-        }
-
-        /* 프로필 및 쿠키 아이콘 영역 */
+        /* ✅ 오른쪽 상단 프로필 & 쿠키 아이콘 스타일 */
         .profile-container {
             position: absolute;
-            top: 20px;
+            top: 15px;
             right: 20px;
             display: flex;
             align-items: center;
@@ -38,10 +60,9 @@
             z-index: 999;
         }
 
-        /* 쿠키 아이콘 */
         .cookie-icon {
-            width: 35px;
-            height: 35px;
+            width: 40px;
+            height: 40px;
             cursor: pointer;
         }
 
@@ -53,7 +74,7 @@
             cursor: pointer;
         }
 
-        /* 드롭다운 메뉴 스타일 */
+        /* ✅ 드롭다운 메뉴 스타일 */
         .dropdown-menu {
             display: none;
             position: absolute;
@@ -67,19 +88,23 @@
             z-index: 10;
         }
 
+        .dropdown-menu.show {
+            display: block;
+        }
+
         .dropdown-menu a {
             display: block;
             padding: 10px 15px;
             color: black;
             text-decoration: none;
             font-size: 14px;
+            text-align: center;
         }
 
         .dropdown-menu a:hover {
             background-color: #f5f5f5;
         }
 
-        /* 로그아웃 버튼 색상 */
         .dropdown-menu .logout {
             color: white;
             background-color: red;
@@ -140,7 +165,6 @@
             font-size: 18px;
         }
 
-        /* ✅ 모달 닫기 버튼 */
         .close-btn {
             color: #555;
             float: right;
@@ -154,87 +178,75 @@
         }
     </style>
 </head>
-
 <body>
-    <h1>꾸깃꾸깃</h1>
-
     {% if request.user.is_authenticated %}
-        <!-- ✅ 쿠키 및 프로필 아이콘 -->
+        <!-- ✅ 왼쪽 사이드바 -->
+        <div id="sidebar">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
+            <button onclick="location.href='{% url 'review_list' %}'">리뷰 게시판</button>
+
+            {% if grouped_messages %}
+                {% for date, messages in grouped_messages.items %}
+                    <h4>{{ date }}</h4>
+                    <button onclick="showChat('{{ date }}')">과거 채팅</button>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- ✅ 오른쪽 상단 프로필 & 쿠키 아이콘 -->
         <div class="profile-container">
-            <!-- ✅ 쿠키 아이콘 -->
             <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
-
-            <!-- ✅ 프로필 아이콘 -->
             <div class="profile-img-container" onclick="toggleDropdown()">
-                {% if request.user.profile_picture %}
-                    <img src="{{ request.user.profile_picture.url }}" alt="프로필 사진" class="profile-img">
+                {% if user.profile_picture %}
+                    <img src="{{ user.profile_picture.url }}" alt="프로필 사진" class="profile-img">
                 {% else %}
-
                     <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
                 {% endif %}
             </div>
 
-            <!-- ✅ 드롭다운 메뉴 -->
             <div class="dropdown-menu" id="dropdown-menu">
-                <a href="{% url 'mypage' %}">내 프로필</a>
+                <a href="{% url 'mypage' %}">My Page</a>
                 <a href="{% url 'logout' %}" class="logout">로그아웃</a>
             </div>
         </div>
-    {% else %}
-        <!-- ✅ 비로그인 시 버튼 표시 -->
-        <a href="{% url 'login' %}" class="btn">로그인</a>
-        <a href="{% url 'signup' %}" class="btn" style="background-color: green;">회원가입</a>
+
+        <!-- ✅ 쿠키 모달 -->
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+                <h2>🍪 쿠키 안내</h2>
+                <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
+                <ul>
+                    <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                    <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                    <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                    <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                </ul>
+            </div>
+        </div>
     {% endif %}
 
-    <!-- ✅ 모달창 -->
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2>🍪 쿠키 안내</h2>
-            <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
-            <ul>
-                <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
-                <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
-                <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
-                <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
-            </ul>
-        </div>
+    <div id="chat-container">
+        <h1>꾸깃꾸깃</h1>
+        <div id="chat-box"></div>
+
+        <form method="POST" action="{% url 'chat' %}" id="input-box">
+            {% csrf_token %}
+            <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
+            <button type="submit" class="btn">보내기</button>
+        </form>
     </div>
 
     <script>
-        // ✅ 드롭다운 메뉴 토글 기능
         function toggleDropdown() {
-            const menu = document.getElementById('dropdown-menu');
-            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+            document.getElementById('dropdown-menu').classList.toggle('show');
         }
-
-        // ✅ 외부 클릭 시 드롭다운 메뉴 닫기
-        document.addEventListener('click', function(event) {
-            const profileContainer = document.querySelector('.profile-container');
-            const dropdownMenu = document.getElementById('dropdown-menu');
-            if (!profileContainer.contains(event.target)) {
-                dropdownMenu.style.display = 'none';
-            }
-        });
-
-        // ✅ 모달 열기
         function openModal() {
             document.getElementById('myModal').style.display = 'block';
         }
-
-        // ✅ 모달 닫기
         function closeModal() {
             document.getElementById('myModal').style.display = 'none';
         }
-
-        // ✅ 외부 클릭 시 모달 닫기
-        window.onclick = function(event) {
-            const modal = document.getElementById('myModal');
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        }
     </script>
-
 </body>
 </html>
