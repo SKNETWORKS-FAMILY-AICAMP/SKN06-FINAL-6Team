@@ -6,10 +6,11 @@ class CustomUserCreationForm(UserCreationForm):
     full_name = forms.CharField(max_length=50, required=True, label="이름")
     nickname = forms.CharField(max_length=30, required=True, label="별명")
     birthdate = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={'type': 'date'}))
+    profile_picture = forms.ImageField(required=False, label="프로필 사진")
 
     class Meta:
         model = CustomUser
-        fields = ("username", "email", "full_name", "nickname", "birthdate", "password1", "password2")
+        fields = ("username", "email", "full_name", "nickname", "birthdate", "password1", "password2", 'profile_picture')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -35,3 +36,20 @@ class FindPWForm(forms.Form):
 class EmailVerificationForm(forms.Form):
     email = forms.EmailField(label="이메일")
     code = forms.CharField(label="인증번호", max_length=6)
+
+# 정보 수정 폼
+class UserUpdateForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput(), required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ['nickname','profile_picture']
+
+    def save(self, commit=True):
+        """비밀번호를 입력한 경우 업데이트"""
+        user = super().save(commit=False)
+        if self.cleaned_data.get('password'):
+            user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user   
