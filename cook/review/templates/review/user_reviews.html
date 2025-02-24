@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ user.username }}님의 리뷰</h2>
+
+{% if reviews %}
+    <ul>
+        {% for review in reviews %}
+            <li>
+                <a href="{% url 'review_detail' review.id %}">{{ review.menu_name }}</a>
+                <span class="rating">
+                    {% for i in "12345"|make_list %}
+                        {% if review.rating >= forloop.counter %}
+                            <span class="full-star">★</span>
+                        {% elif review.rating >= forloop.counter|add:"-0.5" %}
+                            <span class="half-star">★</span>
+                        {% else %}
+                            <span class="empty-star">☆</span>
+                        {% endif %}
+                    {% endfor %}
+                </span>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>이 사용자가 작성한 리뷰가 없습니다.</p>
+{% endif %}
+
+<a href="{% url 'review_list' %}" class="back-button">리뷰 목록으로</a>
+{% endblock %}

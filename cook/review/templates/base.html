@@ -1,0 +1,108 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}사이트 제목{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script>
+        function toggleDropdown() {
+            document.getElementById("profile-dropdown").classList.toggle("show");
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.profile-img')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #ffffff;
+            color: white;
+        }
+        .logo img {
+            height: 80px;  
+            cursor: pointer;
+        }
+        .profile-container {
+            position: relative;
+            display: inline-block;
+        }
+        .profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            object-fit: cover;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 100px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            text-align: center;
+        }
+        .dropdown-content a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: black;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <!-- ✅ 홈 버튼을 로고 이미지로 변경 -->
+        <div class="logo">
+            <a href="{% url 'home' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="홈">
+            </a>
+        </div>
+
+        <div>
+            {% if request.user.is_authenticated %}
+                <div class="profile-container">
+                    <!-- ✅ 프로필 이미지 설정이 없으면 기본 이미지(user.png) 표시 -->
+                    {% if request.user.profile_image %}
+                        <img src="{{ request.user.profile_image.url }}" alt="Profile" class="profile-img" onclick="toggleDropdown()">
+                    {% else %}
+                        <img src="{% static 'imgs/user.png' %}" alt="Default Profile" class="profile-img" onclick="toggleDropdown()">
+                    {% endif %}
+                    <div id="profile-dropdown" class="dropdown-content">
+                        <a href="{% url 'mypage' %}">마이페이지</a>
+                        <a href="{% url 'logout' %}">로그아웃</a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" style="color: white; text-decoration: none; margin-right: 10px;">로그인</a>
+                <a href="{% url 'signup' %}" style="color: white; text-decoration: none;">회원가입</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

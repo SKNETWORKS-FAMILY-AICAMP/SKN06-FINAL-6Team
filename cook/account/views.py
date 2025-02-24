@@ -9,14 +9,14 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.contrib import messages
-from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm  # ✅ 올바른 폼 이름 사용
+from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm, UserUpdateForm
 
 User = get_user_model()
 
 # 회원가입
 def signup(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save()
             login(request, user)  # 회원가입 후 자동 로그인
@@ -45,7 +45,7 @@ def logout_view(request):
 # 프로필 (로그인된 사용자만 접근 가능)
 @login_required
 def profile(request):
-    return render(request, 'account/profile.html')
+    return render(request, 'account/mypage.html')
 
 # 카카오 로그인
 def kakao_login(request):
@@ -169,3 +169,24 @@ def verify_email_code(request):
         form = EmailVerificationForm()
 
     return render(request, "account/verify_email_code.html", {"form": form})
+
+@login_required
+def mypage(request):
+    """사용자 정보 수정 페이지"""
+    if request.method == 'POST':
+        form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "회원 정보가 수정되었습니다.")
+            return redirect('mypage')
+    else:
+        form = UserUpdateForm(instance=request.user)
+    return render(request, 'account/mypage.html', {'form': form})
+
+@login_required
+def delete_account(request):
+    """회원탈퇴 기능"""
+    user = request.user
+    user.delete()
+    messages.success(request, "회원 탈퇴가 완료되었습니다.")
+    return redirect('home')

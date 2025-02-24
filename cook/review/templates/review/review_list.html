@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>리뷰 게시판</h2>
+    <a href="{% url 'review_create' %}">리뷰 작성</a>
+
+    <form method="GET">
+        <input type="text" name="query" placeholder="메뉴 검색" value="{{ query }}">
+        <button type="submit">검색</button>
+    </form>
+
+    <label for="sort">정렬:</label>
+    <select id="sort" onchange="sortReviews(this.value)">
+        <option value="latest" {% if sort == "latest" %}selected{% endif %}>최신순</option>
+        <option value="views" {% if sort == "views" %}selected{% endif %}>조회순</option>
+        <option value="rating" {% if sort == "rating" %}selected{% endif %}>별점순</option>
+    </select>
+
+    <div class="review-list">
+        {% for review in reviews %}
+            <div class="review-item">
+                <!-- 🔹 메뉴명 클릭 시 리뷰 상세 페이지로 이동 -->
+                <a href="{% url 'review_detail' review.id %}" class="menu-name">
+                    {{ review.menu_name }}
+                </a>
+
+                <!-- 🔹 닉네임 클릭 시 해당 유저의 리뷰 목록으로 이동 -->
+                <a href="{% url 'user_reviews' review.user.username %}" class="author-name">
+                    {{ review.user.nickname }}
+                </a>
+
+                <!-- 별점 표시 -->
+                <div class="rating">
+                    {% for i in "12345"|make_list %}
+                        {% if review.rating >= forloop.counter %}
+                            <span class="full-star">★</span>
+                        {% elif review.rating >= forloop.counter|add:"-0.5" %}
+                            <span class="half-star">★</span>
+                        {% else %}
+                            <span class="empty-star">☆</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <p>작성된 리뷰가 없습니다.</p>
+        {% endfor %}
+    </div>
+
+    <script>
+        function sortReviews(sortValue) {
+            const queryParams = new URLSearchParams(window.location.search);
+            queryParams.set('sort', sortValue);
+            window.location.search = queryParams.toString();
+        }
+    </script>
+
+    <style>
+        .review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .review-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .menu-name, .author-name {
+            width: 150px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid black;
+            padding: 5px;
+            text-decoration: none;
+            color: black;
+        }
+        .author-name:hover {
+            color: blue;
+            text-decoration: underline;
+        }
+        .rating {
+            font-size: 24px;
+            display: flex;
+            gap: 5px;
+        }
+        .full-star {
+            color: gold;
+        }
+        .empty-star {
+            color: gray;
+        }
+        /* 반쪽 별 적용 */
+        .half-star {
+            position: relative;
+            display: inline-block;
+            color: gray; /* 기본 빈 별 */
+        }
+        .half-star::before {
+            content: "★"; /* 별 아이콘 */
+            position: absolute;
+            color: gold; /* 왼쪽 반쪽만 금색 */
+            width: 50%;
+            overflow: hidden;
+            clip-path: inset(0 50% 0 0); /* 왼쪽 절반만 보이게 */
+        }
+    </style>
+{% endblock %}

@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'cookapp',
     'account',
+    'review',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -119,17 +121,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "cook", "static"),  # 변경됨!
-]
-
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "cook", "static")]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 로그인 후 이동할 기본 페이지
-LOGIN_REDIRECT_URL = '/account/profile/'
+LOGIN_REDIRECT_URL = '/account/mypage/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 
 # 로그인 페이지 URL
@@ -140,3 +139,7 @@ AUTH_USER_MODEL = 'account.CustomUser'
 
 #카카오톡 RestAPI키
 KAKAO_REST_API_KEY = 'cef73be738ef09d08640bcdfa716d4dc'
+
+# 미디어 파일 설정 추가
+MEDIA_URL = '/media/' 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

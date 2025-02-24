@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>{% if form.instance.pk %}리뷰 수정{% else %}리뷰 작성{% endif %}</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <label for="menu_name">메뉴명:</label>
+        {{ form.menu_name }}
+
+        <label for="rating">평점:</label>
+        <div class="star-rating">
+            {% for i in "12345"|make_list %}
+                <span class="star" data-value="{{ forloop.counter }}">★</span>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="rating" id="rating-input" value="{{ form.rating.value|default:5 }}">
+
+        <label for="content">리뷰 내용:</label>
+        {{ form.content }}
+
+        <label for="images">이미지 업로드:</label>
+        <input type="file" name="images" id="images" multiple>
+
+        <button type="submit">저장</button>
+    </form>
+
+    <a href="{% url 'review_list' %}">취소</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const stars = document.querySelectorAll(".star-rating .star");
+            const ratingInput = document.getElementById("rating-input");
+
+            function updateStars(value) {
+                stars.forEach(star => {
+                    const starValue = parseFloat(star.getAttribute("data-value"));
+                    if (starValue <= value) {
+                        star.classList.add("selected");
+                        star.classList.remove("half-selected");
+                    } else if (starValue - 0.5 === value) {
+                        star.classList.add("half-selected");
+                        star.classList.remove("selected");
+                    } else {
+                        star.classList.remove("selected", "half-selected");
+                    }
+                });
+            }
+
+            stars.forEach(star => {
+                star.addEventListener("mousemove", function (event) {
+                    const rect = this.getBoundingClientRect();
+                    const isLeftHalf = event.clientX < rect.left + rect.width / 2;
+                    const value = parseFloat(this.getAttribute("data-value")) - (isLeftHalf ? 0.5 : 0);
+                    updateStars(value);
+                });
+
+                star.addEventListener("mouseleave", function () {
+                    updateStars(parseFloat(ratingInput.value));
+                });
+
+                star.addEventListener("click", function (event) {
+                    const rect = this.getBoundingClientRect();
+                    const isLeftHalf = event.clientX < rect.left + rect.width / 2;
+                    const value = parseFloat(this.getAttribute("data-value")) - (isLeftHalf ? 0.5 : 0);
+                    ratingInput.value = value;
+                    updateStars(value);
+                });
+            });
+
+            updateStars(parseFloat(ratingInput.value));
+        });
+    </script>
+
+    <style>
+        .star-rating {
+            font-size: 24px;
+            display: flex;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .star {
+            color: gray;
+            position: relative;
+        }
+
+        .star.selected {
+            color: gold;
+        }
+
+        .star.half-selected::before {
+            content: "★";
+            color: gold;
+            position: absolute;
+            width: 50%;
+            overflow: hidden;
+        }
+    </style>
+{% endblock %}
