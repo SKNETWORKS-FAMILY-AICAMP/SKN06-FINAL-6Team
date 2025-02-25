@@ -323,11 +323,6 @@ def crawling():
     conn.commit()
     conn.close()
 
-    #####################
-    # 지우세요.
-    #####################
-    df.to_csv(r'C:\Users\Playdata\SKN06\last_prj\crawling_data.csv', index=False)
-
     # vector db에 저장
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     fais = FAISS.load_local("fun_faiss", embeddings, allow_dangerous_deserialization=True)
