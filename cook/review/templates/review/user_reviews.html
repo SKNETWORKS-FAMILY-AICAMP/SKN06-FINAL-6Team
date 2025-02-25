@@ -1,29 +1,78 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>{{ user.username }}님의 리뷰</h2>
+    <h2>{{ user.nickname }}님의 리뷰</h2>
 
-{% if reviews %}
-    <ul>
-        {% for review in reviews %}
-            <li>
-                <a href="{% url 'review_detail' review.id %}">{{ review.menu_name }}</a>
-                <span class="rating">
-                    {% for i in "12345"|make_list %}
-                        {% if review.rating >= forloop.counter %}
-                            <span class="full-star">★</span>
-                        {% elif review.rating >= forloop.counter|add:"-0.5" %}
-                            <span class="half-star">★</span>
-                        {% else %}
-                            <span class="empty-star">☆</span>
-                        {% endif %}
-                    {% endfor %}
-                </span>
-            </li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <p>이 사용자가 작성한 리뷰가 없습니다.</p>
-{% endif %}
+    <!-- ✅ 정렬 드롭다운 추가 -->
+    <div class="sort-options">
+        <label for="sort-select"><strong>정렬:</strong></label>
+        <select id="sort-select" name="sort" onchange="location = this.value;">
+            <option value="?sort=created_at" {% if sort_option == 'created_at' %}selected{% endif %}>최신순</option>
+            <option value="?sort=views" {% if sort_option == 'views' %}selected{% endif %}>조회순</option>
+            <option value="?sort=rating" {% if sort_option == 'rating' %}selected{% endif %}>별점순</option>
+        </select>
+    </div>
 
-<a href="{% url 'review_list' %}" class="back-button">리뷰 목록으로</a>
+    {% if reviews %}
+        <ul>
+            {% for review in reviews %}
+                <li>
+                    <a href="{% url 'review_detail' review.id %}">{{ review.menu_name }}</a>
+                    <span class="rating">
+                        <span class="star">★</span> {{ review.rating }}
+                    </span>
+                    <span class="views">조회수: {{ review.views }}</span>
+                    <span class="created_at">{{ review.created_at|date:"Y-m-d" }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>이 사용자가 작성한 리뷰가 없습니다.</p>
+    {% endif %}
+
+    <a href="{% url 'review_list' %}" class="back-button">리뷰 목록으로</a>
+
+    <style>
+        .rating {
+            font-size: 18px;
+            margin-left: 10px;
+            color: black;
+        }
+
+        .star {
+            color: gold;
+        }
+
+        .sort-options {
+            margin-bottom: 15px;
+        }
+
+        /* ✅ 드롭다운 스타일링 */
+        #sort-select {
+            padding: 5px 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .views {
+            margin-left: 10px;
+            color: gray;
+        }
+
+        .created_at {
+            margin-left: 10px;
+            color: darkgray;
+        }
+    </style>
+
 {% endblock %}

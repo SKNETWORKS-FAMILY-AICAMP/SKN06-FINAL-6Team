@@ -90,7 +90,20 @@ def review_delete(request, pk):
 # ✅ 특정 사용자의 리뷰 목록 조회
 def user_reviews(request, username):
     user = get_object_or_404(User, username=username)
-    reviews = Review.objects.filter(user=user).order_by("-created_at")
+    
+    # 🔥 GET 파라미터에서 정렬 옵션 가져오기 (기본값: 최신순)
+    sort_option = request.GET.get('sort', 'created_at')
 
-    return render(request, "review/user_reviews.html", {"reviews": reviews, "user": user})
+    # ✅ 사용자가 선택한 옵션에 따라 정렬
+    if sort_option == 'views':
+        reviews = Review.objects.filter(user=user).order_by('-views')
+    elif sort_option == 'rating':
+        reviews = Review.objects.filter(user=user).order_by('-rating')
+    else:  # 최신순 (기본값)
+        reviews = Review.objects.filter(user=user).order_by('-created_at')
 
+    return render(request, "review/user_reviews.html", {
+        "reviews": reviews, 
+        "user": user, 
+        "sort_option": sort_option
+    })
