@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect
 from .models import Message
 from django.contrib.auth.decorators import login_required
 
-@login_required
 def chat_view(request):
     if request.method == "POST":
         content = request.POST.get("message")

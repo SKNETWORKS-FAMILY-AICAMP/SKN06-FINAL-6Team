@@ -4,88 +4,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>채팅</title>
+    <title>홈페이지</title>
     <style>
         body {
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
             font-family: Arial, sans-serif;
+            margin: 0;
             position: relative;
         }
-        #sidebar {
-            width: 250px;
-            padding: 15px;
-            background-color: #f4f4f4;
-        }
-        #chat-container {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 15px;
-        }
-        #chat-box {
-            flex-grow: 1;
-            border: 1px solid #ccc;
-            padding: 10px;
-            height: 300px;
-            overflow-y: auto;
-        }
-        #input-box {
-            display: flex;
-            gap: 10px;
-        }
-        #message-input {
-            flex-grow: 1;
-            padding: 5px;
-        }
-        .btn {
-            padding: 5px 10px;
-            background-color: blue;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .btn.secondary {
-            background-color: gray;
-        }
 
-        /* ✅ 오른쪽 상단 로그인 버튼 / 프로필 & 쿠키 */
         .header {
             position: absolute;
-            top: 15px;
+            top: 20px;
             right: 20px;
+            z-index: 9999;
             display: flex;
             align-items: center;
-            gap: 10px;
-            z-index: 999;
+            gap: 15px;
         }
 
-        .cookie-icon {
+        .btn.login-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            text-decoration: none;
+            color: white;
+            background-color: #007bff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .btn.login-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* ✅ 쿠키 & 프로필 아이콘 */
+        .cookie-icon, .profile-img {
             width: 40px;
             height: 40px;
             cursor: pointer;
         }
 
         .profile-img {
-            width: 50px;
-            height: 50px;
             border-radius: 50%;
             object-fit: cover;
-            cursor: pointer;
         }
 
-        /* ✅ 드롭다운 메뉴 스타일 */
+        /* ✅ 드롭다운 메뉴 */
         .dropdown-menu {
             display: none;
             position: absolute;
-            top: 60px;
+            top: 50px;
             right: 0;
             background-color: white;
             border: 1px solid #ccc;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             width: 150px;
-            z-index: 10;
+            z-index: 1000;
         }
 
         .dropdown-menu.show {
@@ -116,22 +94,7 @@
             background-color: darkred;
         }
 
-        /* ✅ 로그인 버튼 스타일 */
-        .btn.login-btn {
-            display: inline-block;
-            padding: 10px 20px;
-            text-decoration: none;
-            color: white;
-            background-color: #007bff;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        .btn.login-btn:hover {
-            background-color: #0056b3;
-        }
-
-        /* ✅ 모달창 스타일 */
+        /* ✅ 쿠키 모달창 */
         .modal {
             display: none;
             position: fixed;
@@ -153,6 +116,33 @@
             text-align: left;
         }
 
+        .modal-content h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-content ul li {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-content ul li span {
+            font-size: 18px;
+        }
+
         .close-btn {
             color: #555;
             float: right;
@@ -164,10 +154,73 @@
         .close-btn:hover {
             color: red;
         }
+
+        .main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-right: 1px solid #ccc;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo img {
+            width: 150px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .description {
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn.start-btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn.start-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .image-display {
+            width: 70%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .image-display img {
+            max-width: 100%;
+            height: auto;
+            object-fit: cover;
+        }
     </style>
 </head>
+
 <body>
-    <!-- ✅ 오른쪽 상단 로그인 여부에 따른 UI -->
     <div class="header">
         {% if request.user.is_authenticated %}
             <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
@@ -188,43 +241,31 @@
         {% endif %}
     </div>
 
-    <!-- ✅ 로그인한 경우 사이드바 표시 -->
-    {% if request.user.is_authenticated %}
-        <div id="sidebar">
-            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
-            <button onclick="location.href='{% url 'review_list' %}'">리뷰 게시판</button>
-
-            {% if grouped_messages %}
-                {% for date, messages in grouped_messages.items %}
-                    <h4>{{ date }}</h4>
-                    <button onclick="showChat('{{ date }}')">과거 채팅</button>
-                {% endfor %}
-            {% endif %}
+    <div class="main">
+        <div class="sidebar">
+            <div class="logo">
+                <img src="{% static 'imgs/logo.png' %}" alt="LOGO">
+            </div>
+            <div class="description">꾸깃꾸깃은 사용자 기반 레시피 추천 챗봇입니다.</div>
+            <a href="{% url 'chat' %}" class="btn start-btn">시작하기</a>
         </div>
-    {% endif %}
 
-    <div id="chat-container">
-        <h1>꾸깃꾸깃</h1>
-        <div id="chat-box"></div>
-
-        <form method="POST" action="{% url 'chat' %}" id="input-box">
-            {% csrf_token %}
-            <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
-            <button type="submit" class="btn">보내기</button>
-        </form>
+        <div class="image-display">
+            <img src="{% static 'imgs/chat_example.png' %}" alt="CHAT 예시 화면">
+        </div>
     </div>
 
     <div id="myModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
             <h2>🍪 쿠키 안내</h2>
-            <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
-            <ul>
-                <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
-                <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
-                <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
-                <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
-            </ul>
+                <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
+                <ul>
+                    <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                    <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                    <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                    <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                </ul>
         </div>
     </div>
 
