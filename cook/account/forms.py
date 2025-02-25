@@ -34,7 +34,6 @@ class FindPWForm(forms.Form):
 
 # 이메일 인증 폼 (6자리 인증번호 입력)
 class EmailVerificationForm(forms.Form):
-    email = forms.EmailField(label="이메일")
     code = forms.CharField(label="인증번호", max_length=6)
 
 # 정보 수정 폼
@@ -53,3 +52,27 @@ class UserUpdateForm(forms.ModelForm):
         if commit:
             user.save()
         return user   
+    
+class PasswordResetForm(forms.Form):
+    """비밀번호 재설정 폼"""
+    password = forms.CharField(
+        label="새 비밀번호",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 입력"}),
+        required=True
+    )
+    confirm_password = forms.CharField(
+        label="비밀번호 확인",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 확인"}),
+        required=True
+    )
+
+    def clean(self):
+        """비밀번호 일치 여부 확인"""
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password != confirm_password:
+            raise forms.ValidationError("비밀번호가 일치하지 않습니다.")
+
+        return cleaned_data

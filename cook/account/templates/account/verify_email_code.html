@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>이메일 인증</h2>
+    <p>이메일로 전송된 인증번호를 입력하세요.</p>
+
+    <form method="POST" action="{% url 'verify_otp' %}">
+        {% csrf_token %}
+
+        <div>
+            <label for="code">인증번호 (6자리)</label>
+            {{ form.code }}
+        </div>
+
+        <button type="submit">인증하기</button>
+    </form>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <p class="{{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

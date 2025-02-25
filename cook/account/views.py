@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 import requests
 import random
@@ -9,58 +9,63 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.contrib import messages
-from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm, UserUpdateForm
+from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm, UserUpdateForm, PasswordResetForm
 
 User = get_user_model()
 
-# 회원가입
+
+# ✅ 회원가입
 def signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save()
-            login(request, user)  # 회원가입 후 자동 로그인
+            login(request, user)
             return redirect('profile')
     else:
         form = CustomUserCreationForm()
     return render(request, 'account/signup.html', {'form': form})
 
-# 로그인
+
+# ✅ 로그인
 def login_view(request):
     if request.method == 'POST':
         form = AuthenticationForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('chat')  # 로그인 후 프로필 페이지로 이동
+            return redirect('chat')
     else:
         form = AuthenticationForm()
     return render(request, 'account/login.html', {'form': form})
 
-# 로그아웃
+
+# ✅ 로그아웃
 def logout_view(request):
     logout(request)
     return redirect('login')
 
-# 프로필 (로그인된 사용자만 접근 가능)
+
+# ✅ 프로필 (로그인된 사용자만 접근 가능)
 @login_required
 def profile(request):
     return render(request, 'account/mypage.html')
 
-# 카카오 로그인
+
+# ✅ 카카오 로그인
 def kakao_login(request):
-    client_id = 'YOUR_KAKAO_REST_API_KEY'  # 카카오 REST API 키
+    client_id = 'YOUR_KAKAO_REST_API_KEY'
     redirect_uri = 'http://127.0.0.1:8000/account/login/kakao/callback/'
     kakao_auth_url = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code"
     return redirect(kakao_auth_url)
 
-# 카카오 로그인 콜백
+
+# ✅ 카카오 로그인 콜백
 def kakao_callback(request):
     code = request.GET.get('code')
     client_id = 'YOUR_KAKAO_REST_API_KEY'
     redirect_uri = 'http://127.0.0.1:8000/account/login/kakao/callback/'
 
-    # 액세스 토큰 요청
     token_url = "https://kauth.kakao.com/oauth/token"
     token_data = {
         'grant_type': 'authorization_code',
@@ -71,105 +76,142 @@ def kakao_callback(request):
     token_response = requests.post(token_url, data=token_data)
     token_json = token_response.json()
 
-    # 사용자 정보 요청
     user_url = "https://kapi.kakao.com/v2/user/me"
     headers = {"Authorization": f"Bearer {token_json['access_token']}"}
     user_response = requests.get(user_url, headers=headers)
     user_json = user_response.json()
 
-    # 세션에 사용자 정보 저장
     request.session['kakao_id'] = user_json['id']
     request.session['kakao_nickname'] = user_json['properties']['nickname']
 
     return redirect('profile')
 
-# 아이디 찾기 (이름 + 이메일)
+
+# ✅ 아이디 찾기 (이름 + 이메일)
 def find_id(request):
     if request.method == "POST":
-        form = FindIDForm(request.POST)  # ✅ FindUsernameForm → FindIDForm 변경
+        form = FindIDForm(request.POST)
         if form.is_valid():
             full_name = form.cleaned_data["full_name"]
             email = form.cleaned_data["email"]
-            
+
             try:
                 user = User.objects.get(full_name=full_name, email=email)
                 return render(request, "account/find_id.html", {"username": user.username})
             except User.DoesNotExist:
                 messages.error(request, "입력한 정보와 일치하는 아이디가 없습니다.")
-    
     else:
         form = FindIDForm()
 
     return render(request, "account/find_id.html", {"form": form})
 
-# 비밀번호 찾기 (아이디 + 이름 + 이메일)
+
+# ✅ 비밀번호 찾기 (아이디 + 이름 + 이메일)
 def find_pw(request):
     if request.method == "POST":
-        form = FindPWForm(request.POST)  # ✅ FindPasswordForm → FindPWForm 변경
+        form = FindPWForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data["username"]
             full_name = form.cleaned_data["full_name"]
             email = form.cleaned_data["email"]
-            
+
             try:
                 user = User.objects.get(username=username, full_name=full_name, email=email)
-                return redirect("send_email_code")  # 인증번호 전송 페이지로 이동
+                request.session["reset_email"] = email
+                return redirect("send_otp_email")
             except User.DoesNotExist:
                 messages.error(request, "입력한 정보와 일치하는 계정이 없습니다.")
-    
     else:
         form = FindPWForm()
 
     return render(request, "account/find_pw.html", {"form": form})
-# 이메일 인증번호 생성 & 전송
-def send_verification_email(request):
-    if request.method == "POST":
-        email = request.POST.get("email")
 
-        # 6자리 랜덤 코드 생성
-        verification_code = "".join(random.choices(string.digits, k=6))
 
-        # 세션에 저장 (임시)
-        request.session["verification_code"] = verification_code
-        request.session["email_for_verification"] = email
+# ✅ OTP 이메일 전송
+def send_otp_email(request):
+    """6자리 OTP 생성 및 이메일 전송"""
+    email = request.session.get("reset_email")
 
-        # 이메일 발송
+    if email:
+        otp = "".join(random.choices(string.digits, k=6))
+        request.session["otp_code"] = str(otp)
+        request.session["is_verified"] = False
+        # request.session.set_expiry(5000)  # 세션 유효시간
+
+        # 이메일 전송
         send_mail(
-            "비밀번호 찾기 인증번호",
-            f"인증번호: {verification_code}",
-            "noreply@yourwebsite.com",
+            "비밀번호 재설정 인증번호",
+            f"인증번호: {otp} (5분 내에 입력해주세요.)",
+            "jhw7246@gmail.com",
             [email],
             fail_silently=False,
         )
-        return JsonResponse({"message": "이메일로 인증번호를 전송했습니다!"})
 
-    return render(request, "account/send_email_code.html")
+        return render(request, "account/send_email_code.html", {"email": email})
+    else:
+        return redirect("find_pw")
 
-# 이메일 인증 확인
-def verify_email_code(request):
+
+# ✅ OTP 인증 확인
+def verify_otp(request):
+    """사용자가 입력한 OTP를 검증"""
     if request.method == "POST":
         form = EmailVerificationForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data["email"]
             code = form.cleaned_data["code"]
 
             # 세션에서 인증번호 확인
-            if (
-                "verification_code" in request.session
-                and "email_for_verification" in request.session
-                and request.session["verification_code"] == code
-                and request.session["email_for_verification"] == email
-            ):
-                messages.success(request, "인증이 완료되었습니다!")
-                return redirect("reset_password")  # 비밀번호 재설정 페이지로 이동
+            otp_code = request.session.get("otp_code")
+            reset_email = request.session.get("reset_email")
+
+            if otp_code and reset_email and str(code) == str(otp_code):
+                request.session["is_verified"] = True
+                request.session["email_for_password_reset"] = reset_email
+                messages.success(request, "인증이 완료되었습니다! 비밀번호를 재설정하세요.")
+                return redirect("reset_password")
             else:
-                messages.error(request, "인증번호가 일치하지 않습니다.")
-    
+                messages.error(request, "인증번호가 일치하지 않거나 만료되었습니다.")
+        else:
+            print("폼 오류:", form.errors)
+            messages.error(request, "유효하지 않은 입력입니다.")
     else:
         form = EmailVerificationForm()
 
     return render(request, "account/verify_email_code.html", {"form": form})
 
+
+def reset_password(request):
+    """비밀번호 재설정 페이지"""
+    email = request.session.get("email_for_password_reset")
+    is_verified = request.session.get("is_verified", False)
+
+    if not email or not is_verified:
+        messages.error(request, "인증이 필요합니다.")
+        return redirect("find_pw")
+
+    if request.method == "POST":
+        form = PasswordResetForm(request.POST)
+        if form.is_valid():
+            password = form.cleaned_data["password"]
+            user = User.objects.get(email=email)
+            user.set_password(password)
+            user.save()
+
+            # ✅ 세션 초기화
+            request.session.flush()
+
+            messages.success(request, "비밀번호가 성공적으로 변경되었습니다!")
+            return redirect("login")
+        else:
+            print("폼 오류:", form.errors)
+            messages.error(request, "유효하지 않은 입력입니다.")
+    else:
+        form = PasswordResetForm()
+
+    return render(request, "account/reset_password.html", {"form": form})
+
+
+# ✅ 마이페이지 (사용자 정보 수정)
 @login_required
 def mypage(request):
     """사용자 정보 수정 페이지"""
@@ -183,6 +225,8 @@ def mypage(request):
         form = UserUpdateForm(instance=request.user)
     return render(request, 'account/mypage.html', {'form': form})
 
+
+# ✅ 회원탈퇴
 @login_required
 def delete_account(request):
     """회원탈퇴 기능"""

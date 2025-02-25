@@ -8,9 +8,11 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),     # 로그아웃
     path('profile/', views.profile, name='profile'),       # 사용자 프로필
     path('find-id/', views.find_id, name='find_id'),       # 아이디 찾기
-    path('find-password/', views.find_pw, name='find_pw'), # 비밀번호 찾기
-    path('send-email-code/', views.send_verification_email, name='send_email_code'),  # 이메일 인증번호 전송
-    path('verify-email-code/', views.verify_email_code, name='verify_email_code'),    # 이메일 인증 확인
     path('mypage/', views.mypage, name='mypage'),          # 마이페이지
-    path('delete/', views.delete_account, name='delete_account'), # 회원탈퇴
+    path('delete/', views.delete_account, name='delete_account'),    # 회원탈퇴
+    path("find-pw/", views.find_pw, name="find_pw"),                 # 비번 찾기
+    path('find-password/', views.find_pw, name='find_password'), 
+    path("send-otp/", views.send_otp_email, name="send_otp_email"),  # OTP 전송
+    path("verify-otp/", views.verify_otp, name="verify_otp"),        # OTP 인증
+    path("reset-password/", views.reset_password, name="reset_password"), # 비밀번호 재설정
 ]
