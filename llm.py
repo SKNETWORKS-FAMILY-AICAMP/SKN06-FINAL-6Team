@@ -64,10 +64,6 @@ def func(query=None):
     '''
     ## load
     docs = load("func")
-
-    # ## vecotrdb 저장 -> 최초 일회만 실행
-    # fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 편스토랑 임베딩 후 db
-    # fais.save_local("fun_faiss") # 로컬 저장
     
     ## vecotrdb 로드
     fais = FAISS.load_local("fun_faiss", embeddings, allow_dangerous_deserialization=True) # 로컬 저장 로드
@@ -85,10 +81,6 @@ def ref(query=None):
     ## load
     docs = load("ref")
 
-    # ## vectordb 저장 -> 최초 일회만 실행
-    # fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 냉부 임베딩 후 db
-    # fais.save_local("ref_faiss") # 로컬 저장
-
     ## vectordb 로드
     fais = FAISS.load_local("ref_faiss", embeddings, allow_dangerous_deserialization=True)
 
@@ -104,10 +96,6 @@ def man(query=None):
     '''
     ## load
     docs = load("man")
-
-    ## vectordb 저장 -> 최초 일회만 실행
-    fais = FAISS.from_documents(documents=docs, embedding=embeddings) # 만개 임베딩 후 db
-    fais.save_local("man_faiss") # 로컬 저장
 
     # vectordb 로드
     fais = FAISS.load_local("man_faiss", embeddings, allow_dangerous_deserialization=True)
@@ -125,10 +113,12 @@ def mkch():
             너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
 
             요리 소개할 때 이름을 언급한 뒤, 한 줄 정도 간단한 요리 소개를 하고 재료를 알려줘.
+            요리 이름은 이름에서 만든 사람을 알 수 있다면 요리사도 같이 알려줘.
             사용자가 네가 추천해준 요리 안에서 요리를 선택하면 사진 혹은 영상과 함께 레시피를 알려줘.
-            만약 사진 혹은 영상이 없으면, 사진이나 영상은 알려주지마.
-            사용자의 질문에서 적절한 요리를 찾지 못하면 다시 물어봐서 정보를 좀 더 수집한 뒤 답변해.
-            답변을 context에서 찾을 수 없으면 모른다고 대답해.
+            만약 해당 요리의 사진, 영상이 모두 없으면, 알려주지말고 하나라도 있으면 같이 첨부해서 알려줘.
+            요리는 기본적으로 세 가지 추천주고, 사용자가 특정 요리 하나를 질문한 경우에만 해당하는 요리 한가지만 알려줘.
+            사용자의 질문의 답을 context에서 적절한 요리를 찾지 못하면 추가 정보를 좀 더 수집한 뒤 답변해.
+            답변을 context에서 찾을 수 없으면 답변을 생성하지 말고 모른다고 대답해.
     {context}"""),
             MessagesPlaceholder(variable_name="history", optional=True),
             ("human", "{question}"),
@@ -140,11 +130,11 @@ def mkch():
         return memory.load_memory_variables({})["history"]
 
     # retriever 로드 => 추후 함수 선택 코드 넣어야 함
-    rbm25_retr, rfais_retr = ref()
-    fbm25_retr, ffais_retr = func()
-    mbm25_retr, mfais_retr = man()
+    rbm25_retr, rfais_retr = ref() # 냉장고를 부탁해
+    fbm25_retr, ffais_retr = func() # 편스토랑
+    mbm25_retr, mfais_retr = man() # 만개의 레시피
 
-    retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],)
+    retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
 
     # Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
     chain = RunnableLambda(lambda x:x['question']) | {"context": retriever, "question":RunnablePassthrough() , "history": RunnableLambda(load_history)}  | prompt_template | model | StrOutputParser()
