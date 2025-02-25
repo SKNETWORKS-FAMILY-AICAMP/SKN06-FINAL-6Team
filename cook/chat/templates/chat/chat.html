@@ -1,10 +1,10 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채팅</title>
+    {% load static %}
     <style>
         body {
             display: flex;
@@ -49,7 +49,7 @@
             background-color: gray;
         }
 
-        /* ✅ 오른쪽 상단 로그인 버튼 / 프로필 & 쿠키 */
+        /* 오른쪽 상단 로그인 버튼 / 프로필 & 쿠키 */
         .header {
             position: absolute;
             top: 15px;
@@ -74,7 +74,7 @@
             cursor: pointer;
         }
 
-        /* ✅ 드롭다운 메뉴 스타일 */
+        /* 드롭다운 메뉴 스타일 */
         .dropdown-menu {
             display: none;
             position: absolute;
@@ -116,7 +116,7 @@
             background-color: darkred;
         }
 
-        /* ✅ 로그인 버튼 스타일 */
+        /* 로그인 버튼 스타일 */
         .btn.login-btn {
             display: inline-block;
             padding: 10px 20px;
@@ -131,7 +131,7 @@
             background-color: #0056b3;
         }
 
-        /* ✅ 모달창 스타일 */
+        /* 모달창 스타일 */
         .modal {
             display: none;
             position: fixed;
@@ -164,10 +164,18 @@
         .close-btn:hover {
             color: red;
         }
+        
+        #mic-button { 
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            align-self: center;
+        }
+
     </style>
 </head>
 <body>
-    <!-- ✅ 오른쪽 상단 로그인 여부에 따른 UI -->
+    <!-- 오른쪽 상단 로그인 여부에 따른 UI -->
     <div class="header">
         {% if request.user.is_authenticated %}
             <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
@@ -188,7 +196,7 @@
         {% endif %}
     </div>
 
-    <!-- ✅ 로그인한 경우 사이드바 표시 -->
+    <!-- 로그인한 경우 사이드바 표시 -->
     {% if request.user.is_authenticated %}
         <div id="sidebar">
             <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
@@ -209,9 +217,10 @@
 
         <form method="POST" action="{% url 'chat' %}" id="input-box">
             {% csrf_token %}
+            <img src="{% static 'imgs/mic.png' %}" alt="음성 입력" id="mic-button"/> <!-- 🔹 추가됨 -->
             <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
-            <button type="submit" class="btn">보내기</button>
-        </form>
+            <button type="button" class="btn" id="send-btn">보내기</button>
+        </form> 
     </div>
 
     <div id="myModal" class="modal">
@@ -241,5 +250,107 @@
             document.getElementById('myModal').style.display = 'none';
         }
     </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let questionAsked = {{ question_asked|yesno:"true,false" }};
+
+            function sendMessage() {
+                if (questionAsked) {
+                    alert("비회원 사용자는 한 번만 질문할 수 있습니다.");
+                    document.getElementById("send-btn").disabled = true;  // 버튼 비활성화 추가
+                    return;
+                }
+
+                const input = document.getElementById("message-input");
+                const message = input.value.trim();
+                if (!message) {
+                    alert("메시지를 입력하세요.");
+                    return;
+                }
+
+                // 사용자 메시지 UI 추가
+                const chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML += `<div class="message user-message"><strong>나:</strong> ${message}</div>`;
+
+                fetch("{% url 'chat_api' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ "message": message })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.response) {
+                        chatBox.innerHTML += `<div class="message bot-message"><strong>AI:</strong> ${data.response}</div>`;
+
+                        // 메시지 입력창 비우기
+                        input.value = "";
+
+                        chatBox.scrollTop = chatBox.scrollHeight;
+
+                        if (!{{ request.user.is_authenticated|lower }}) {
+                            questionAsked = true;
+                            document.getElementById("send-btn").disabled = true;  // 버튼 비활성화
+                        }
+                    } else {
+                        alert("오류 발생: " + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("서버 오류가 발생했습니다.");
+                });
+            }
+
+            // Enter 키를 눌렀을 때 메시지 전송
+            document.getElementById("message-input").addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            document.getElementById("send-btn").addEventListener("click", sendMessage);
+        });
+    </script>
+
+    <script>
+        document.getElementById('mic-button').addEventListener('click', startSpeechRecognition); /* 🔹 추가됨 */
+
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR';
+            recognition.interimResults = false;
+
+            recognition.onstart = function () {
+                console.log('음성 인식 시작');
+            };
+
+            recognition.onspeechend = function () {
+                recognition.stop();
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('message-input').value = transcript;
+            };
+
+            recognition.onerror = function (event) {
+                console.error('음성 인식 오류:', event.error);
+            };
+
+            recognition.start();
+        }
+    </script>
+
 </body>
 </html>
