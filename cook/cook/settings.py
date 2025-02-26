@@ -69,7 +69,7 @@ WSGI_APPLICATION = 'cook.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'user.sqlite3',
     }
 }
 
@@ -138,8 +138,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'jhw7246@gmail.com'  # 발신자 이메일
-EMAIL_HOST_PASSWORD = 'azagdlymdgidpfoh'  # 앱 비밀번호 사용
+EMAIL_HOST_USER = 'cookitcookeat@gmail.com'  # 발신자 이메일
+EMAIL_HOST_PASSWORD = 'jotobmzoiptiosac'  # 앱 비밀번호 사용
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"  # 기본 설정

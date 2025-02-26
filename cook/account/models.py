@@ -22,3 +22,12 @@ class CustomUser(AbstractUser):
     
     def __str__(self):
         return self.username
+    
+class KakaoUser(models.Model):
+    kakao_id = models.BigIntegerField(unique=True)  # 카카오 고유 ID
+    nickname = models.CharField(max_length=100)
+    email = models.EmailField(null=True, blank=True)
+    birthdate = models.DateField(null=True, blank=True) # ✅ YYYY-MM-DD 형식 저장
+    
+    def __str__(self):
+        return self.nickname

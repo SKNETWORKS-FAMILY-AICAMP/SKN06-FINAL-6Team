@@ -253,21 +253,31 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            let questionAsked = {{ question_asked|yesno:"true,false" }};
+            let questionAsked = {{ question_asked|lower }};  // Django에서 전달된 세션 값 가져오기
+            let aiResponded = false;  // AI 응답 여부
 
             function sendMessage() {
-                if (questionAsked) {
-                    alert("비회원 사용자는 한 번만 질문할 수 있습니다.");
-                    document.getElementById("send-btn").disabled = true;  // 버튼 비활성화 추가
-                    return;
+                // 🔹 AI 응답을 받은 후 추가 전송 시도하면 기본 alert() 표시 후 차단
+                if (questionAsked && aiResponded) {
+                    alert("비회원일 경우 한 번의 응답만 받을 수 있습니다.\n로그인 하시겠습니까?");
+                    if (confirm("로그인 페이지로 이동할까요?")) {
+                        location.href = "{% url 'login' %}";
+                    } else {
+                        location.href = "{% url 'home' %}";
+                    }
+                    return;  // 🚫 추가 전송 차단
                 }
 
                 const input = document.getElementById("message-input");
                 const message = input.value.trim();
+
                 if (!message) {
                     alert("메시지를 입력하세요.");
                     return;
                 }
+
+                // 🔹 입력값 즉시 삭제
+                input.value = "";
 
                 // 사용자 메시지 UI 추가
                 const chatBox = document.getElementById("chat-box");
@@ -281,22 +291,22 @@
                     },
                     body: JSON.stringify({ "message": message })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("서버 오류 발생");
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.response) {
+                    if (data && data.response) {
                         chatBox.innerHTML += `<div class="message bot-message"><strong>AI:</strong> ${data.response}</div>`;
-
-                        // 메시지 입력창 비우기
-                        input.value = "";
-
                         chatBox.scrollTop = chatBox.scrollHeight;
 
+                        // 🔹 AI 응답을 받은 후, 추가 질문을 시도하면 차단됨
                         if (!{{ request.user.is_authenticated|lower }}) {
                             questionAsked = true;
-                            document.getElementById("send-btn").disabled = true;  // 버튼 비활성화
+                            aiResponded = true;
                         }
-                    } else {
-                        alert("오류 발생: " + data.error);
                     }
                 })
                 .catch(error => {
@@ -305,7 +315,7 @@
                 });
             }
 
-            // Enter 키를 눌렀을 때 메시지 전송
+            // Enter 키를 눌렀을 때 메시지 전송 (AI 응답 후에는 팝업 띄움)
             document.getElementById("message-input").addEventListener("keypress", function(event) {
                 if (event.key === "Enter") {
                     event.preventDefault();
@@ -316,6 +326,7 @@
             document.getElementById("send-btn").addEventListener("click", sendMessage);
         });
     </script>
+
 
     <script>
         document.getElementById('mic-button').addEventListener('click', startSpeechRecognition); /* 🔹 추가됨 */
