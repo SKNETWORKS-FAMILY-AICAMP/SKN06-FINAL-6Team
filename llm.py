@@ -166,13 +166,13 @@ def mkch():
     )
     return chain
 
-def chat(user_id, history_id):
+def chat():
     chain = mkch()
     while True:
         query = input("메시지 입력 > ")
         if query == "종료":
             break
-        res = chain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
+        res = chain.invoke({"question": query}, config={"configurable": {"user_id": "티라노", "history_id": "010101"}})
         print(res)
 
 chat()
