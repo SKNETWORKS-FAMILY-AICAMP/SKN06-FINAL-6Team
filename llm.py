@@ -42,7 +42,7 @@ store = {}
 def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory:
     if (user_id, history_id) not in store:
         store[(user_id, history_id)] = InMemoryHistory()
-    print(f"현재 저장된 히스토리: {store}") # 디버깅용
+    # print(f"현재 저장된 히스토리: {store}") # 디버깅용
     return store[(user_id, history_id)]
 
 def load(case):
