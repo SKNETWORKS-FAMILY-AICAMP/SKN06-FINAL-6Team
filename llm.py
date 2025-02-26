@@ -156,7 +156,7 @@ def mkch():
     # chatting Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
     chatting = {"context": itemgetter("question") | retriever, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
 
-    # 메모리 결합 체인인
+    # 메모리 결합 체인
     chain = RunnableWithMessageHistory(
         chatting, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
