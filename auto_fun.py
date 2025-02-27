@@ -49,7 +49,7 @@ def crawling():
         post_no = match[1]
 
     # 크롤링 결과 저장할 데이터프레임 생성
-    df = pd.DataFrame(columns=["id", "title", "ingredients", "recipe", "img"])
+    df = pd.DataFrame(columns=["id", "name", "ingredients", "recipe", "img"])
 
     # 크롤링 중 오류 발생한 링크 저장할 변수 선언
     exception_link = set()
@@ -69,7 +69,7 @@ def crawling():
         post_diff = datetime.today() - datetime.strptime(page_json["post"]["valid_begin_date"], "%Y-%m-%d %H:%M:%S")
         print(post_diff)
 
-        if post_diff.days > 5:
+        if post_diff.days > 7:
                 print(f"exception_link: {exception_link}")
                 break
 
@@ -310,7 +310,7 @@ def crawling():
     df.rename(columns={"clean_recipe": "recipe"}, inplace=True)
     print(f"전처리 {df.columns}")
 
-    conn = sqlite3.connect("funs.db")
+    conn = sqlite3.connect("./funs.db")
     cursor = conn.cursor()
 
     # 데이터 저장
@@ -325,7 +325,7 @@ def crawling():
 
     # vector db에 저장
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    fais = FAISS.load_local("fun_faiss", embeddings, allow_dangerous_deserialization=True)
+    fais = FAISS.load_local("./fun_faiss", embeddings, allow_dangerous_deserialization=True)
 
     df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe']
     df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
