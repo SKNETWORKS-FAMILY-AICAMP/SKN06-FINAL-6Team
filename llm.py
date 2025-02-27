@@ -1,3 +1,5 @@
+import random
+import string
 import sqlite3
 import pandas as pd
 from typing import List
@@ -21,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class InMemoryHistory(BaseChatMessageHistory, BaseModel):
-    """인메모리 채팅 히스토리 클래스"""
+    """인메모리 히스토리 클래스"""
     messages: List[BaseMessage] = Field(default_factory=list)
 
     def add_messages(self, messages: List[BaseMessage]) -> None:
@@ -42,7 +44,7 @@ store = {}
 def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory:
     if (user_id, history_id) not in store:
         store[(user_id, history_id)] = InMemoryHistory()
-    # print(f"현재 저장된 히스토리: {store}") # 디버깅용
+    print(f"현재 저장된 히스토리: {store}") # 디버깅용
     return store[(user_id, history_id)]
 
 def load(case):
@@ -53,6 +55,7 @@ def load(case):
         df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe']
         df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
         conn.close()
+        df.rename(columns={'photo':'img', 'video_url':'video'}, inplace=True)
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
         return docs
@@ -69,77 +72,51 @@ def load(case):
         return docs
     
     else:
-        conn = sqlite3.connect("data.db")
+        conn = sqlite3.connect("man.db")
         df = pd.read_sql("SELECT * FROM processed_data", conn)
 
         df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe'] + " " + df['category'] + " " + df['info'] + " " + df['intro']
         df.drop(columns=['name', 'ingredients', 'recipe', "info", "intro"], inplace=True)
         conn.close()
+        df.rename(columns={'photo':'img'}, inplace=True)
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
         return docs
 
-def func(query=None):
-    '''
-    편스토랑 retriever
-    '''
-    ## load
-    docs = load("func")
-    
-    ## vecotrdb 로드
-    fais = FAISS.load_local("fun_faiss", embeddings, allow_dangerous_deserialization=True) # 로컬 저장 로드
-
-    ## bm25 retriever, faiss retriever 앙상블
-    bm25_retr = BM25Retriever.from_documents(docs)
-    bm25_retr.k = 3
-    fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-    return bm25_retr, fais_retr
-
-def ref(query=None):
-    '''
-    냉장고를 부탁해 retriever
-    '''
-    ## load
-    docs = load("ref")
-
-    ## vectordb 로드
-    fais = FAISS.load_local("ref_faiss", embeddings, allow_dangerous_deserialization=True)
-
-    ## bm25 retriever, faiss retriever 앙상블
-    bm25_retr = BM25Retriever.from_documents(docs)
-    bm25_retr.k = 3
-    fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-    return bm25_retr, fais_retr
-
-def man(query=None):
-    '''
-    만개의 레시피 retriever
-    '''
-    ## load
-    docs = load("man")
+def load_retriever(case, faiss_path):
+    """ retriever 로드 함수"""
+    docs = load(case)
 
     # vectordb 로드
-    fais = FAISS.load_local("man_faiss", embeddings, allow_dangerous_deserialization=True)
+    fais = FAISS.load_local(faiss_path, embeddings, allow_dangerous_deserialization=True)
 
-    ## bm25 retriever, faiss retriever 앙상블
+    # BM25 retriever, FAISS retriever 앙상블
     bm25_retr = BM25Retriever.from_documents(docs)
     bm25_retr.k = 3
     fais_retr = fais.as_retriever(search_kwargs={"k": 3})
+    
     return bm25_retr, fais_retr
 
 def mkch():
     # Prompt Template 생성
     messages = [
-            ("ai", """
+            ("system", """
+            # instruction
             너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
 
-            요리 소개할 때 요리 이름을 언급한 뒤, 한 줄 정도 간단한 요리 소개를 하고 재료, 사진을 알려줘.
-            요리 이름은 이름에서 만든 사람을 알 수 있다면 요리사도 같이 알려주고, 사진은 context에서 해당하는 요리의 사진을 알려주면 돼. 없으면 알려주지마.
-            요리는 기본적으로 3가지 추천 해주고, 사용자가 특정 요리 하나를 질문한 경우에만 해당하는 요리 1가지만 알려줘.
+            사용자가 찾는 요리는 context 항목에 있는 요리 중에서 설명해줘.
+            요리 소개할 때 요리 이름을 언급한 뒤, 한 줄 정도 간단한 요리 소개를 하고 재료, 사진만 먼저 알려줘.
+            요리 이름은 이름에서 만든 사람을 알 수 있다면 요리사도 같이 알려주면 돼.
+            사진은 context에서 `img`에 있는 해당 요리의 사진 링크를 알려주면 돼. 만약 `img`에 사진 링크가 없을 경우 "없음" 이라고 답해야해. 사진 링크를 임의로 생성하거나 다른 요리의 사진을 절대 가져오지마.
+            요리는 3가지 추천 해주면 돼, 사용자가 특정 요리 하나를 질문한 경우에만 해당하는 요리 1가지만 알려줘.
             요리 추천 기준은 사용자가 재료를 입력했을 경우, 해당 재료는 많은 순으로 먼저 정렬하고, 우선 순위가 같은 요리에 대해서는 부가적인 재료가 적은 순으로 재정렬해줘.
-            레시피는 요약하지말고, 있는 그대로 순서대로 알려줘.
-            레시피 알려줄 때 영상도 같이 알려줘야해. 만약 영상이 없으면 알려주지마. context에 네가 알려줄 요리의 영상이이 있을 때만 같이 첨부해서 알려줘.
+            
+            사용자가 요리를 고르면 레시피와 영상을 알려주는데 레시피는 요약하지말고, 있는 그대로 순서대로 알려줘.
+            레시피 알려줄 때 영상도 같이 알려줘야해. 영상은 context의 `video`에 저장된 링크주소를 알려주면된다. `video`에 영상 링크가 없으면 "없음" 이라고 답해야한다. 영상 링크 임의로 만들지거나 다른 영상링크를 알려주지마.
             사용자의 질문의 답을 context에서 적절한 요리를 찾지 못하면 필요에 따라 추가 정보를 좀 더 수집한 뒤 답변하고, 그럼에도 답변할 내용을 context에서 찾을 수 없으면 답변을 생성하지 말고 모른다고 대답해.
+            
+            # context
+            
     {context}"""),
             MessagesPlaceholder(variable_name="history", optional=True),
             ("human", "{question}"),
@@ -147,16 +124,15 @@ def mkch():
     prompt_template = ChatPromptTemplate(messages)
 
     # retriever 로드 => 추후 함수 선택 코드 넣어야 함
-    rbm25_retr, rfais_retr = ref() # 냉장고를 부탁해
-    fbm25_retr, ffais_retr = func() # 편스토랑
-    mbm25_retr, mfais_retr = man() # 만개의 레시피
+    rbm25_retr, rfais_retr = load_retriever("ref", "ref_faiss") # 냉장고를 부탁해
+    fbm25_retr, ffais_retr = load_retriever("func", "fun_faiss") # 편스토랑
+    mbm25_retr, mfais_retr = load_retriever("man", "man_faiss") # 만개의 레시피
 
     retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
 
     # chatting Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
     chatting = {"context": itemgetter("question") | retriever, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
 
-    # 메모리 결합 체인
     chain = RunnableWithMessageHistory(
         chatting, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
@@ -166,13 +142,31 @@ def mkch():
     )
     return chain
 
-def chat():
+def save_history(user_id, history_id, messages):
+    """대화 내용 저장 함수 -> 추후 장고 db에 맞춰서 수정해야함"""
+    conn = sqlite3.connect("history.db")
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS chat_history (user_id TEXT, history_id TEXT, messages TEXT)")
+    cursor.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, history_id, str(messages)))
+    conn.commit()
+    conn.close()
+
+def mkhisid(user_id):
+    """history_id 생성 함수"""
+    while True:
+        history_id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        if user_id + history_id not in store.keys():
+            # user_id와 history_id가 없는 경우 종료
+            return history_id
+
+def chat(user_id):
+    history_id = mkhisid(user_id)
     chain = mkch()
     while True:
         query = input("메시지 입력 > ")
         if query == "종료":
             break
-        res = chain.invoke({"question": query}, config={"configurable": {"user_id": "티라노", "history_id": "010101"}})
+        res = chain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
         print(res)
 
-chat()
+chat("티라노")
