@@ -17,7 +17,7 @@
     <p><strong>조회수:</strong> {{ review.views }}</p>
     <p>{{ review.content }}</p>
 
-    <!-- ✅ 첫 번째 사진 + 추가 사진 개수 표시 (클릭 시 갤러리 열기) -->
+    <!-- 첫 번째 사진 + 추가 사진 개수 표시 (클릭 시 갤러리 열기) -->
     {% if review.images.all %}
         <div class="review-images">
             <div class="main-image">
@@ -29,7 +29,7 @@
         </div>
     {% endif %}
 
-    <!-- ✅ 갤러리 모달 (클릭 시 전체 화면 보기) -->
+    <!-- 갤러리 모달 (클릭 시 전체 화면 보기) -->
     <div id="image-gallery" class="gallery-modal">
         <span class="close" onclick="closeGallery()">&times;</span>
         <div class="gallery-wrapper">
@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <!-- ✅ 전체 화면 모달 (좌우 이동 가능) -->
+    <!-- 전체 화면 모달 (좌우 이동 가능) -->
     <div id="fullscreen-modal" class="fullscreen-modal">
         <span class="close" onclick="closeFullScreen()">&times;</span>
         <span class="arrow left" onclick="changeImage(-1)">&#10094;</span>
@@ -64,8 +64,63 @@
 
     <a href="{% url 'review_list' %}">목록으로</a>
 
+    <!-- 커뮤니티 -->
+    <div class="community-section"> 
+        <!-- 좋아요 버튼 -->
+        <button id="like-btn" onclick="toggleLike()">
+            👍 좋아요 (<span id="like-count">{{ review.likes.count }}</span>)
+        </button>
+    
+        <!-- 댓글 입력 폼 -->
+        <h3>댓글</h3>
+        <form method="POST" action="{% url 'add_comment' review.pk %}">
+            {% csrf_token %}
+            <textarea name="content" placeholder="댓글을 입력하세요..." required></textarea>
+            <button type="submit">댓글 작성</button>
+        </form>
+        
+        <!-- 댓글 목록 -->
+        <ul id="comment-list">
+            {% for comment in review.comments.all %}
+                <li id="comment-{{ comment.id }}">
+                    <strong>{{ comment.user.nickname }}</strong>: {{ comment.content }}
+        
+                    {% if request.user == comment.user %}  
+                        <form method="POST" action="{% url 'delete_comment' comment.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit">❌</button>
+                        </form>
+                    {% endif %}
+                
+                    <!-- 대댓글 입력 -->
+                    <form method="POST" action="{% url 'add_reply' comment.id %}" style="margin-left: 20px; margin-top: 5px;">
+                        {% csrf_token %}
+                        <textarea name="content" placeholder="답글을 입력하세요..." required></textarea>
+                        <button type="submit">답글 작성</button>
+                    </form>
+
+                    <!-- 대댓글 목록 -->
+                    <ul style="margin-left: 40px;">
+                        {% for reply in comment.replies.all %}
+                            <li id="reply-{{ reply.id }}">
+                                <strong>{{ reply.user.nickname }}</strong>: {{ reply.content }}
+                                
+                                {% if request.user == reply.user %}
+                                    <form method="POST" action="{% url 'delete_reply' reply.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit">❌</button>
+                                    </form>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    
     <style>
-        /* ⭐ 삭제 확인 모달 스타일 */
+        /* 삭제 확인 모달 스타일 */
         .delete-modal {
             display: none;
             position: fixed;
@@ -90,14 +145,14 @@
             margin: 5px;
             padding: 10px;
         }
-
-        /* ⭐ 심플한 별 스타일 */
+`
+        /* 심플한 별 스타일 */
         .star-display {
             color: gold;
             font-size: 24px;
         }
 
-        /* ⭐ 이미지 스타일 */
+        /* 이미지 스타일 */
         .review-images {
             position: relative;
             width: 300px;
@@ -122,7 +177,7 @@
             cursor: pointer;
         }
 
-        /* ⭐ 갤러리 모달 스타일 */
+        /* 갤러리 모달 스타일 */
         .gallery-modal {
             display: none;
             position: fixed;
@@ -162,7 +217,7 @@
             cursor: pointer;
         }
 
-        /* ⭐ 전체 화면 모달 스타일 (좌우 화살표 추가) */
+        /* 전체 화면 모달 스타일 (좌우 화살표 추가) */
         .fullscreen-modal {
             display: none;
             position: fixed;
@@ -214,7 +269,7 @@
     </style>
 
     <script>
-        // ✅ 이미지 삭제 팝업
+        // 이미지 삭제 팝업
         function openDeletePopup() {
             document.getElementById("delete-popup").style.display = "flex";
         }
@@ -223,7 +278,7 @@
             document.getElementById("delete-popup").style.display = "none";
         }
 
-        // ✅ 이미지 갤러리 모달
+        // 이미지 갤러리 모달
         function openGallery() {
             document.getElementById("image-gallery").style.display = "flex";
         }
@@ -232,7 +287,7 @@
             document.getElementById("image-gallery").style.display = "none";
         }
 
-        // ✅ 전체 화면 이미지 모달 (좌우 이동 가능)
+        // 전체 화면 이미지 모달 (좌우 이동 가능)
         let currentImageIndex = 0;
         const images = document.querySelectorAll(".gallery-image");
 
@@ -258,7 +313,7 @@
             fullscreenImage.src = images[currentImageIndex].src;
         }
 
-        // ✅ 키보드 방향키로도 이동 가능하게 추가
+        // 키보드 방향키로도 이동 가능하게 추가
         document.addEventListener("keydown", function(event) {
             if (document.getElementById("fullscreen-modal").style.display === "flex") {
                 if (event.key === "ArrowLeft") {
@@ -270,6 +325,68 @@
                 }
             }
         });
-    </script>
 
+        // 좋아요 버튼 기능
+        function toggleLike() {
+            fetch("{% url 'review_like' review.pk %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("like-count").innerText = data.likes;
+            });
+        }
+
+        // 댓글 추가 기능
+        function addComment() {
+            let content = document.getElementById("comment-input").value;
+            
+            if (!content) {
+            alert("댓글을 입력하세요!"); 
+            return;
+            }
+
+            fetch("{% url 'add_comment' review.pk %}", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": "{{ csrf_token }}" 
+                },
+                body: "content=" + encodeURIComponent(content)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    let commentList = document.getElementById("comment-list");
+                    let newComment = document.createElement("li");
+                    newComment.id = "comment-" + data.comment_id;
+                    newComment.innerHTML = `<strong>${data.user}</strong>: ${data.content} <button onclick="deleteComment(${data.comment_id})">❌</button>`;
+                    commentList.appendChild(newComment);
+                    
+                    commentInput.value = "";
+                }
+            });
+        }
+
+        // 댓글 삭제 기능 (AJAX 방식)
+        function deleteComment(commentId) {
+            let deleteUrl = "{% url 'delete_comment' 12345 %}".replace("12345", commentId);
+                
+            fetch(deleteUrl, {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("comment-" + commentId).remove();
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+    </script>
 {% endblock %}

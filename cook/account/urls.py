@@ -1,15 +1,14 @@
 from django.urls import path
 from . import views
-from .views import kakao_login, kakao_callback, kakao_logout, kakao_delete_account, deleted_account_page
+from .views import kakao_login, kakao_callback, kakao_logout, kakao_delete_account
 
 urlpatterns = [
     path('signup/', views.signup, name='signup'),          # 회원가입
     path('login/', views.login_view, name='login'),        # 로그인
     path("login/kakao/", kakao_login, name="kakao_login"), # 카카오 로그인
     path("login/kakao/callback/", kakao_callback, name="kakao-callback"),
-    path("logout/", kakao_logout, name="kakao_logout"), # 카카오 로그아웃
+    path("logout/kakao/", kakao_logout, name="kakao_logout"), # 카카오 로그아웃
     path("delete-account/", kakao_delete_account, name="kakao-delete-account"),  # 카카오 탈퇴
-    path("deleted/", deleted_account_page, name="deleted-account"),  # ✅ 탈퇴된 계정 안내 페이지 추가
     path('logout/', views.logout_view, name='logout'),     # 로그아웃
     path('profile/', views.profile, name='profile'),       # 사용자 프로필
     path('find-id/', views.find_id, name='find_id'),       # 아이디 찾기

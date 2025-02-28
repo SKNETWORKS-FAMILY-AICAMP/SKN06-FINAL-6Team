@@ -201,7 +201,9 @@
         <div id="sidebar">
             <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
             <button onclick="location.href='{% url 'review_list' %}'">리뷰 게시판</button>
-
+            <button onclick="startNewChat()">새 채팅 시작</button>
+            <h2>이전 채팅 목록</h2>
+            <ul id="sessionList"></ul>
             {% if grouped_messages %}
                 {% for date, messages in grouped_messages.items %}
                     <h4>{{ date }}</h4>
@@ -265,7 +267,7 @@
                     } else {
                         location.href = "{% url 'home' %}";
                     }
-                    return;  // 🚫 추가 전송 차단
+                    return;  // 추가 전송 차단
                 }
 
                 const input = document.getElementById("message-input");
@@ -326,7 +328,47 @@
             document.getElementById("send-btn").addEventListener("click", sendMessage);
         });
     </script>
+    
+    <script>
+        async function startNewChat() {
+            let response = await fetch("/chat/api/new_chat/", { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } });
+            let data = await response.json();
+            
+            if (data.success) {
+                alert("새 채팅이 시작되었습니다.");
+                document.getElementById("chat-box").innerHTML = ""; // 채팅 초기화
+                loadChatSessions(); // 채팅 세션 목록 새로고침
+            } else {
+                alert("새 채팅을 생성할 수 없습니다.");
+            }
+        }
 
+        async function loadChatSessions() {
+            let response = await fetch("/chat/api/chat_sessions/");
+            let data = await response.json();
+            let sessionList = document.getElementById("sessionList");
+            sessionList.innerHTML = "";
+
+            data.sessions.forEach(session => {
+                let li = document.createElement("li");
+                li.innerHTML = `<a href="javascript:void(0);" onclick="loadChatHistory('${session.session_id}')">채팅 세션 ${session.session_id}</a>`;
+                sessionList.appendChild(li);
+            });
+        }
+
+        async function loadChatHistory(sessionId) {
+            let response = await fetch(`/api/chat/${sessionId}/`);
+            let data = await response.json();
+            let chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = "";
+
+            data.messages.forEach(msg => {
+                let sender = msg.is_ai_response ? "🤖 AI" : "👤 나";
+                let className = msg.is_ai_response ? "bot-message" : "user-message";
+                chatBox.innerHTML += `<div class="message ${className}"><strong>${sender}:</strong> ${msg.content}</div>`;
+            });
+        }
+    </script>
 
     <script>
         document.getElementById('mic-button').addEventListener('click', startSpeechRecognition); /* 🔹 추가됨 */
@@ -362,6 +404,6 @@
             recognition.start();
         }
     </script>
-
+    
 </body>
 </html>

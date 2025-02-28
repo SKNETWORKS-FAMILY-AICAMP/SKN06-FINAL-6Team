@@ -10,7 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.contrib import messages
 from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm, UserUpdateForm, PasswordResetForm
-from .models import KakaoUser
+from .models import CustomUser
+from django.contrib.sessions.models import Session
 
 User = get_user_model()
 
@@ -81,27 +82,26 @@ def kakao_callback(request):
 
     # ✅ 사용자 정보 정리
     kakao_id = user_info.get("id")
+    full_name = user_info["kakao_account"].get("name")
     nickname = user_info["kakao_account"]["profile"]["nickname"]
     email = user_info["kakao_account"].get("email", f"kakao_{kakao_id}@example.com")  # 이메일 없을 경우 기본값 설정
-    
     birthyear = user_info["kakao_account"].get("birthyear")
     birthday = user_info["kakao_account"].get("birthday")  # MMDD 형식으로 제공됨
     birthdate = f"{birthyear}-{birthday[:2]}-{birthday[2:]}" if birthyear and birthday else None
-    profile_image = user_info["kakao_account"]["profile"].get("profile_image_url")
 
     # ✅ Django User 모델과 연동
-    user, created = User.objects.get_or_create(username=f"kakao_{kakao_id}", defaults={"email": email, "nickname": nickname, "birthdate":birthdate, "profile_picture": profile_image})
+    user, created = User.objects.get_or_create(username=f"kakao_{kakao_id}", defaults={"email": email, "nickname": nickname, "birthdate":birthdate })
 
     # ✅ Django 로그인 처리 (request.user 업데이트)
     login(request, user)
 
     # ✅ 세션에 사용자 정보 저장
     request.session["kakao_id"] = kakao_id
+    request.session["kakao_fullname"] = full_name
     request.session["kakao_nickname"] = nickname
     request.session["kakao_email"] = email
     request.session["kakao_birthdate"] = birthdate
     request.session["kakao_access_token"] = access_token
-    request.session["kakao_profile_image"] = profile_image
     return redirect("chat")  # ✅ 로그인 후 chat 화면으로 이동
 
 
@@ -124,22 +124,23 @@ def kakao_delete_account(request):
         # ✅ 1. 카카오 API를 사용하여 개별 사용자 연결 끊기 (unlink)
         unlink_url = "https://kapi.kakao.com/v1/user/unlink"
         headers = {"Authorization": f"Bearer {access_token}"}  # ✅ 사용자 access_token 사용
-
-        unlink_response = requests.post(unlink_url, headers=headers).json()
-        print("✅ 카카오 연결 끊기 응답:", unlink_response)
+        requests.post(unlink_url, headers=headers)
 
         # ✅ 2. DB에서 해당 사용자 정보 삭제
-        KakaoUser.objects.filter(kakao_id=kakao_id).delete()
-        print(f"✅ 사용자 {kakao_id} 삭제 완료!")
+        CustomUser.objects.filter(kakao_id=kakao_id).delete()
 
-    # ✅ 3. 세션 삭제 (완전히 로그아웃 처리)
+    # ✅ 3. 로그아웃 처리 (세션에서 사용자 정보 제거)
+    logout(request)
+    request.session.clear()
     request.session.flush()
+    Session.objects.filter(session_key=request.session.session_key).delete()
     
-    return redirect("/")  # ✅ 탈퇴 후 홈으로 이동
+    response = redirect("login")  # ✅ 홈으로 리디렉트
+    response.delete_cookie("sessionid") # ✅ Django 세션 쿠키 삭제
+    response.delete_cookie("csrftoken") # ✅ CSRF 토큰 삭제 (필요하면 추가)
 
-def deleted_account_page(request):
-    """✅ 탈퇴된 계정 안내 페이지"""
-    return render(request, "deleted.html")  # ✅ templates/deleted.html 파일을 렌더링
+    messages.success(request, "회원 탈퇴가 완료되었습니다.")
+    return response
 
 
 # ✅ 아이디 찾기 (이름 + 이메일)

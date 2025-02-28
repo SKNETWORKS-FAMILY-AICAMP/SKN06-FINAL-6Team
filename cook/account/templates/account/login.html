@@ -143,9 +143,8 @@
 
         <hr>
 
-        <!-- ✅ 카카오 로그인 버튼 -->
         <div class="kakao-login">
-            {% if request.session.kakao_id %}
+            {% if request.user.is_authenticated and request.session.kakao_id %}
                 <p>환영합니다, {{ request.session.kakao_nickname }}님!</p>
                 <a href="{% url 'kakao_logout' %}">
                     <button class="logout-btn">로그아웃</button>
