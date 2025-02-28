@@ -3,10 +3,12 @@ import string
 import sqlite3
 import pandas as pd
 from typing import List
+from textwrap import dedent
 from pydantic import BaseModel, Field
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.document_loaders import DataFrameLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
@@ -48,14 +50,13 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
     return store[(user_id, history_id)]
 
 def load(case):
-    if case == "func":
+    if case == "funs":
         conn = sqlite3.connect("funs.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
-        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe']
+        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
         df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
         conn.close()
-        df.rename(columns={'photo':'img', 'video_url':'video'}, inplace=True)
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
         return docs
@@ -64,8 +65,8 @@ def load(case):
         conn = sqlite3.connect("fridges.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
-        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipes']
-        df.drop(columns=['name', 'ingredients', 'recipes'], inplace=True)
+        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
+        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
         conn.close()
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()
@@ -75,12 +76,12 @@ def load(case):
         conn = sqlite3.connect("man.db")
         df = pd.read_sql("SELECT * FROM processed_data", conn)
 
-        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe'] + " " + df['category'] + " " + df['info'] + " " + df['intro']
+        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe'] + " ||| " + df['category'] + " ||| " + df['info'] + " ||| " + df['intro']
         df.drop(columns=['name', 'ingredients', 'recipe', "info", "intro"], inplace=True)
         conn.close()
-        df.rename(columns={'photo':'img'}, inplace=True)
         loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
+        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(model_name='gpt-4o-mini', chunk_size=1000, chunk_overlap=0)
+        docs = loader.load_and_split(splitter)
         return docs
 
 def load_retriever(case, faiss_path):
@@ -100,24 +101,30 @@ def load_retriever(case, faiss_path):
 def mkch():
     # Prompt Template 생성
     messages = [
-            ("system", """
+            ("system", dedent("""
             # instruction
             너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
 
-            사용자가 찾는 요리는 context 항목에 있는 요리 중에서 설명해줘.
-            요리 소개할 때 요리 이름을 언급한 뒤, 한 줄 정도 간단한 요리 소개를 하고 재료, 사진만 먼저 알려줘.
-            요리 이름은 이름에서 만든 사람을 알 수 있다면 요리사도 같이 알려주면 돼.
-            사진은 context에서 `img`에 있는 해당 요리의 사진 링크를 알려주면 돼. 만약 `img`에 사진 링크가 없을 경우 "없음" 이라고 답해야해. 사진 링크를 임의로 생성하거나 다른 요리의 사진을 절대 가져오지마.
-            요리는 3가지 추천 해주면 돼, 사용자가 특정 요리 하나를 질문한 경우에만 해당하는 요리 1가지만 알려줘.
-            요리 추천 기준은 사용자가 재료를 입력했을 경우, 해당 재료는 많은 순으로 먼저 정렬하고, 우선 순위가 같은 요리에 대해서는 부가적인 재료가 적은 순으로 재정렬해줘.
+            사용자에게 요리를 알려줄 때 요리는 context 항목에 있는 요리 중에서 알려줘야해.
+            다음 조건을 참고해서 요리를 알려주면 돼.
+            1. 사용자에게 요리를 추천할 때 요리 3가지를 추천한다. 그러나 사용자가 특정 요리의 레시피를 물어본 경우 해당하는 요리에 대한 정보를 제공한다. 
+            2. 요리를 소개할 때 요리 이름을 먼저 언급한 뒤 간단한 요리 소개(한줄 분량), 재료, 사진 순으로 소개한다.
+            2-1. 요리 이름에서 요리사 이름을 알 수 있다면 요리사 이름도 요리 이름과 같이 알려준다.
+            2-2. 사진은 context에서 `img`에 있는 해당 요리의 사진 링크를 알려준다. 만약 `img`에 사진 링크가 없다면 "제공할 수 있는 사진이 없습니다."라고 답한다.
+            2-3. 사진 링크를 임의로 생성하거나 다른 요리의 사진을 절대 알려주지 않는다.
             
-            사용자가 요리를 고르면 레시피와 영상을 알려주는데 레시피는 요약하지말고, 있는 그대로 순서대로 알려줘.
-            레시피 알려줄 때 영상도 같이 알려줘야해. 영상은 context의 `video`에 저장된 링크주소를 알려주면된다. `video`에 영상 링크가 없으면 "없음" 이라고 답해야한다. 영상 링크 임의로 만들지거나 다른 영상링크를 알려주지마.
-            사용자의 질문의 답을 context에서 적절한 요리를 찾지 못하면 필요에 따라 추가 정보를 좀 더 수집한 뒤 답변하고, 그럼에도 답변할 내용을 context에서 찾을 수 없으면 답변을 생성하지 말고 모른다고 대답해.
+            3. 요리 추천 시 정렬 기준은 다음과 같다.
+            3-1. 사용자가 재료를 입력했을 경우, 해당 재료는 많은 순으로 먼저 정렬하고, 우선 순위가 같은 요리에 대해서는 부가적인 재료가 적은 순으로 정렬한다.
+            
+            4. 사용자가 요리를 고르면 레시피와 영상을 알려준다. 이때 레시피는 요약하지말고, 있는 그대로 순서대로 알려줘야한다.
+            4-1. 영상은 context의 `video`에 저장된 링크 주소를 알려준다. `video`에 영상 링크가 없으면 "제공할 수 있는 영상이 없습니다." 이라고 답해야한다.
+            4-2. 영상 링크 임의로 생성하거나 다른 요리의 영상 링크를 절대 알려주지 않는다.
+            
+            `사용자의 질문의 답을 context에서 적절한 요리를 찾지 못하면 필요에 따라 추가 정보를 사용자로부터 더 수집한 뒤 답변하고, 그럼에도 답변할 내용을 context에서 찾을 수 없으면 답변을 생성하지 말고 모른다고 대답해`
             
             # context
             
-    {context}"""),
+    {context}""")),
             MessagesPlaceholder(variable_name="history", optional=True),
             ("human", "{question}"),
         ]
@@ -125,7 +132,7 @@ def mkch():
 
     # retriever 로드 => 추후 함수 선택 코드 넣어야 함
     rbm25_retr, rfais_retr = load_retriever("ref", "ref_faiss") # 냉장고를 부탁해
-    fbm25_retr, ffais_retr = load_retriever("func", "fun_faiss") # 편스토랑
+    fbm25_retr, ffais_retr = load_retriever("funs", "fun_faiss") # 편스토랑
     mbm25_retr, mfais_retr = load_retriever("man", "man_faiss") # 만개의 레시피
 
     retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
@@ -169,4 +176,4 @@ def chat(user_id):
         res = chain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
         print(res)
 
-chat("티라노")
+chat("suy")
