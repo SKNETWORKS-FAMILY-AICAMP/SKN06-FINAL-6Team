@@ -21,7 +21,9 @@ def signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)  # 저장을 잠시 미룸
+            user.point = 200  # 회원가입 시 200 쿠키 지급
+            user.save()
             login(request, user)
             return redirect('profile')
     else:
@@ -91,6 +93,11 @@ def kakao_callback(request):
 
     # ✅ Django User 모델과 연동
     user, created = User.objects.get_or_create(username=f"kakao_{kakao_id}", defaults={"email": email, "nickname": nickname, "birthdate":birthdate })
+
+    # ✅ 처음 가입한 유저라면 200 쿠키 지급
+    if created:
+        user.point = 200  # ✅ 첫 카카오 로그인 시 200 쿠키 지급
+        user.save()
 
     # ✅ Django 로그인 처리 (request.user 업데이트)
     login(request, user)

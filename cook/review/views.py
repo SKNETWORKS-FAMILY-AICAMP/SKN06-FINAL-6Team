@@ -50,6 +50,14 @@ def review_create(request):
             for file in files:
                 ReviewImage.objects.create(review=review, image=file)
 
+            # 쿠키 지급 로직 추가
+            if files:  # 이미지가 하나라도 있으면 15 쿠키 지급
+                request.user.point += 15
+            else:  # 이미지가 없으면 10 쿠키 지급
+                request.user.point += 10
+
+            request.user.save()  # 쿠키 업데이트 저장
+
             return redirect("review_detail", pk=review.pk)  # ✅ 작성 후 상세 페이지로 이동
     else:
         form = ReviewForm()
@@ -77,17 +85,6 @@ def review_update(request, pk):
         form = ReviewForm(instance=review)
 
     return render(request, "review/review_form.html", {"form": form, "review": review})
-
-# 리뷰 삭제 (작성자만 가능)
-@login_required
-def review_delete(request, pk):
-    review = get_object_or_404(Review, pk=pk, user=request.user)
-
-    if request.method == "POST":
-        review.delete()
-        return redirect("review_list")
-
-    return render(request, "review/review_confirm_delete.html", {"review": review})
 
 # 특정 사용자의 리뷰 목록 조회
 def user_reviews(request, username):

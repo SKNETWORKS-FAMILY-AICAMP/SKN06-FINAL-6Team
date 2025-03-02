@@ -40,8 +40,8 @@ def load(case):
         conn = sqlite3.connect("./chat/db/fridges.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
-        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipes']
-        df.drop(columns=['name', 'ingredients', 'recipes'], inplace=True)
+        df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe']
+        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
         conn.close()
         loader = DataFrameLoader(df, page_content_column="page_content")
         docs = loader.load()

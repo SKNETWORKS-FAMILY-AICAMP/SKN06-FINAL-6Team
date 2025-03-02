@@ -331,27 +331,43 @@
     
     <script>
         async function startNewChat() {
-            let response = await fetch("/chat/api/new_chat/", { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } });
+            let response = await fetch("/chat/api/new_chat/", { 
+                method: "POST", 
+                headers: { "X-CSRFToken": "{{ csrf_token }}" } 
+            });
+
             let data = await response.json();
-            
+
             if (data.success) {
                 alert("새 채팅이 시작되었습니다.");
                 document.getElementById("chat-box").innerHTML = ""; // 채팅 초기화
-                loadChatSessions(); // 채팅 세션 목록 새로고침
+
+                loadChatSessions(data.chat_id);  // ✅ 방금 만든 세션 ID를 넘겨서, 목록에서 제외!
             } else {
                 alert("새 채팅을 생성할 수 없습니다.");
             }
         }
-
-        async function loadChatSessions() {
+        async function loadChatSessions(latestSessionId = null) {
             let response = await fetch("/chat/api/chat_sessions/");
             let data = await response.json();
             let sessionList = document.getElementById("sessionList");
-            sessionList.innerHTML = "";
+            sessionList.innerHTML = "";  // ✅ 기존 목록 초기화
 
             data.sessions.forEach(session => {
+                if (latestSessionId && session.session_id === latestSessionId) return; // ✅ 새로 생성된 세션은 목록에서 제외
+
                 let li = document.createElement("li");
-                li.innerHTML = `<a href="javascript:void(0);" onclick="loadChatHistory('${session.session_id}')">채팅 세션 ${session.session_id}</a>`;
+                
+                // 채팅 요약
+                let chatSummary = session.latest_message ? session.latest_message.substring(0, 10) : "메시지 없음";
+                
+                li.innerHTML = `
+                    <span onclick="loadChatHistory('${session.session_id}')" style="cursor:pointer;">
+                        ${chatSummary}
+                    </span>
+                    <button class="delete-btn" onclick="deleteChat('${session.session_id}')">x</button>
+                `;
+
                 sessionList.appendChild(li);
             });
         }
@@ -368,6 +384,27 @@
                 chatBox.innerHTML += `<div class="message ${className}"><strong>${sender}:</strong> ${msg.content}</div>`;
             });
         }
+        
+        async function deleteChat(sessionId) {
+            if (!confirm("정말 삭제하시겠습니까?")) return;
+
+            let response = await fetch(`/chat/api/delete_chat/${sessionId}/`, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            });
+
+            let data = await response.json();
+            if (data.success) {
+                alert("채팅이 삭제되었습니다.");
+                loadChatSessions();
+            } else {
+                alert("삭제 실패: " + data.error);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadChatSessions();  // 페이지 로드 시 채팅 목록 불러오기
+        });
     </script>
 
     <script>

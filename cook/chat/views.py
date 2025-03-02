@@ -53,6 +53,14 @@ def chat_api(request):
             if not request.user.is_authenticated and request.session.get("question_asked", False):
                 return JsonResponse({"error": "비회원 사용자는 한 번만 질문할 수 있습니다."}, status=403)
 
+            # 로그인한 사용자만 쿠키 차감
+            if request.user.is_authenticated:
+                if request.user.point < 10:  # ❌ 쿠키 부족하면 차단
+                    return JsonResponse({"error": "쿠키가 부족하여 채팅을 보낼 수 없습니다."}, status=403)
+
+                request.user.point -= 10  # 쿠키 10개 차감
+                request.user.save()
+
             # 🔹 사용자의 채팅 세션 가져오기 (없다면 새로운 세션 생성)
             if request.user.is_authenticated:
                 chat_session = ChatSession.objects.filter(user=request.user).order_by("-created_at").first()
@@ -87,5 +95,25 @@ def chat_api(request):
 @login_required
 def chat_sessions(request):
     """사용자의 모든 채팅 세션 목록을 가져옴"""
-    sessions = ChatSession.objects.filter(user=request.user).values("session_id", "created_at")
-    return JsonResponse({"sessions": list(sessions)})
+    sessions = ChatSession.objects.filter(user=request.user).order_by("-created_at")
+    session_data = []
+    
+    for session in sessions:
+        latest_message = Message.objects.filter(session=session).order_by("-timestamp").first()
+        session_data.append({
+            "session_id": session.session_id,
+            "latest_message": latest_message.content if latest_message else None
+        })
+    
+    return JsonResponse({"sessions": session_data})
+
+@login_required
+def delete_chat(request, session_id):
+    """특정 채팅 세션 삭제 (메시지 포함)"""
+    try:
+        session = ChatSession.objects.get(session_id=session_id, user=request.user)
+        Message.objects.filter(session=session).delete()  # 메시지 삭제
+        session.delete()  # 채팅 세션 삭제
+        return JsonResponse({"success": True})
+    except ChatSession.DoesNotExist:
+        return JsonResponse({"success": False, "error": "세션이 존재하지 않습니다."}, status=404)
