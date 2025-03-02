@@ -7,11 +7,11 @@ from textwrap import dedent
 from pydantic import BaseModel, Field
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_community.document_loaders import DataFrameLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import DataFrameLoader
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
+from langchain.retrievers import EnsembleRetriever, MergerRetriever
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import ConfigurableFieldSpec
@@ -106,7 +106,7 @@ def mkch():
             너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
 
             사용자에게 요리를 알려줄 때 요리는 context 항목에 있는 요리 중에서 알려줘야해.
-            다음 조건을 참고해서 요리를 알려주면 돼.
+            다음 조건을 참고해서 요리를 알려줘야해.
             1. 사용자에게 요리를 추천할 때 요리 3가지를 추천한다. 그러나 사용자가 특정 요리의 레시피를 물어본 경우 해당하는 요리에 대한 정보를 제공한다. 
             2. 요리를 소개할 때 요리 이름을 먼저 언급한 뒤 간단한 요리 소개(한줄 분량), 재료, 사진 순으로 소개한다.
             2-1. 요리 이름에서 요리사 이름을 알 수 있다면 요리사 이름도 요리 이름과 같이 알려준다.
@@ -135,10 +135,35 @@ def mkch():
     fbm25_retr, ffais_retr = load_retriever("funs", "fun_faiss") # 편스토랑
     mbm25_retr, mfais_retr = load_retriever("man", "man_faiss") # 만개의 레시피
 
-    retriever = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr, fbm25_retr, ffais_retr, mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
+    ensemble1 = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
+    ensemble2 = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
+    ensemble3 = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
+    retriever = MergerRetriever(retrievers=[ensemble1, ensemble2, ensemble3])
+
+    def format_docs(docs):
+        # retriever 결과 형태 변환
+        li = []
+        for doc in docs:
+            content = {}
+            content.update(doc.metadata)
+            text = doc.page_content
+            txt = text.split(" ||| ")
+            if len(txt) == 3:
+                content["name"] = txt[0]
+                content["ingrdients"] = txt[1]
+                content["recipe"] = txt[2]
+            elif len(txt) == 6:
+                content["name"] = txt[0]
+                content["ingrdients"] = txt[1]
+                content["recipe"] = txt[2]
+                content["category"] = txt[3]
+                content["info"] = txt[4]
+                content["intro"] = txt[5]
+            li.append(content)
+        return li
 
     # chatting Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
-    chatting = {"context": itemgetter("question") | retriever, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
+    chatting = {"context": itemgetter("question") | retriever | format_docs, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
 
     chain = RunnableWithMessageHistory(
         chatting, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
