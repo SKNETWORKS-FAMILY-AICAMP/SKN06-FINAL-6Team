@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>비밀번호 찾기</h2>
+
+    <!-- ✅ 1단계: 아이디 & 이메일 입력 -->
+    <div id="step1">
+        <p>가입 시 사용한 아이디와 이메일을 입력하세요.</p>
+        <form method="POST" id="send_code_form">
+            {% csrf_token %}
+            <label for="id_username">아이디</label>
+            <input type="text" name="username" id="id_username" required>
+
+            <label for="id_email">이메일</label>
+            <input type="email" name="email" id="id_email" required>
+
+            <button type="button" onclick="sendVerificationCode()">인증번호 요청</button>
+        </form>
+    </div>
+
+    <!-- ✅ 2단계: 인증번호 입력 -->
+    <div id="step2" style="display: none;">
+        <h3>이메일 인증</h3>
+        <p>{{ email }}로 전송된 인증번호를 입력하세요.</p>
+        <form method="POST" id="verify_code_form">
+            {% csrf_token %}
+            <label for="id_verification_code">인증번호 (6자리)</label>
+            <input type="text" name="verification_code" id="id_verification_code" required maxlength="6">
+            <p id="timer" style="color: red;">인증번호 유효시간: 10분</p>
+
+            <button type="button" onclick="verifyCode()">인증하기</button>
+        </form>
+    </div>
+
+    <!-- ✅ 3단계: 비밀번호 변경 -->
+    <div id="step3" style="display: none;">
+        <h3>새 비밀번호 입력</h3>
+        <form method="POST" id="reset_password_form">
+            {% csrf_token %}
+            <label for="id_new_password1">새 비밀번호</label>
+            <input type="password" name="new_password1" id="id_new_password1" required minlength="8">
+
+            <label for="id_new_password2">새 비밀번호 확인</label>
+            <input type="password" name="new_password2" id="id_new_password2" required>
+
+            <p id="password-error" style="color: red; display: none;">비밀번호가 일치하지 않습니다.</p>
+
+            <button type="submit">비밀번호 변경</button>
+        </form>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <p class="{{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <script>
+        let timer;
+        function sendVerificationCode() {
+            const email = document.getElementById("id_email").value;
+            const username = document.getElementById("id_username").value;
+            if (!email || !username) {
+                alert("아이디와 이메일을 입력하세요.");
+                return;
+            }
+
+            fetch("{% url 'send_email_code' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ email: email, username: username })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("인증번호가 이메일로 전송되었습니다.");
+                    document.getElementById("step1").style.display = "none";
+                    document.getElementById("step2").style.display = "block";
+                    startTimer();
+                } else {
+                    alert("인증번호 전송에 실패했습니다. 아이디와 이메일을 확인하세요.");
+                }
+            });
+        }
+
+        function verifyCode() {
+            const code = document.getElementById("id_verification_code").value;
+            fetch("{% url 'verify_email_code' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("인증 성공! 새 비밀번호를 입력하세요.");
+                    document.getElementById("step2").style.display = "none";
+                    document.getElementById("step3").style.display = "block";
+                } else {
+                    alert("잘못된 인증번호입니다. 다시 입력하세요.");
+                }
+            });
+        }
+
+        function startTimer() {
+            let time = 600;
+            timer = setInterval(() => {
+                const minutes = Math.floor(time / 60);
+                const seconds = time % 60;
+                document.getElementById("timer").innerText = `인증번호 유효시간: ${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+                if (time-- <= 0) {
+                    clearInterval(timer);
+                    alert("인증번호가 만료되었습니다. 다시 요청하세요.");
+                    document.getElementById("step2").style.display = "none";
+                    document.getElementById("step1").style.display = "block";
+                }
+            }, 1000);
+        }
+
+        document.getElementById("id_new_password2").addEventListener("input", function() {
+            const password1 = document.getElementById("id_new_password1").value;
+            const password2 = document.getElementById("id_new_password2").value;
+            const error = document.getElementById("password-error");
+
+            if (password1 !== password2) {
+                error.style.display = "block";
+            } else {
+                error.style.display = "none";
+            }
+        });
+    </script>
+
+{% endblock %}

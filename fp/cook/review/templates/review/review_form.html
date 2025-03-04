@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>{% if form.instance.pk %}리뷰 수정{% else %}리뷰 작성{% endif %}</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <label for="menu">메뉴 선택:</label>
+        {{ form.menu }}
+
+        <label for="rating">평점:</label>
+        <input type="number" name="rating" min="1" max="5" step="1" value="{{ form.rating.value|default:5 }}">
+
+        <label for="review_text">리뷰 내용:</label>
+        {{ form.review_text }}
+
+        <label for="images">이미지 업로드:</label>
+        <input type="file" name="images" id="images" multiple>
+
+        <button type="submit">저장</button>
+    </form>
+
+    <a href="{% url 'userreviews_list' %}">취소</a>
+{% endblock %}

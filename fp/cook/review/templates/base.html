@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}사이트 제목{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">
+            <a href="{% url 'home' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="홈">
+            </a>
+        </div>
+
+        <div class="profile-container">
+            {% if request.user.is_authenticated %}
+                <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="Profile" class="profile-img" onclick="toggleDropdown()">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="Default Profile" class="profile-img" onclick="toggleDropdown()">
+                {% endif %}
+                <div id="profile-dropdown" class="dropdown-content">
+                    <a href="{% url 'mypage' %}">MY PAGE</a>
+                    <a href="{% url 'logout' %}">로그아웃</a>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" class="auth-link">로그인</a>
+                <a href="{% url 'signup' %}" class="auth-link">회원가입</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>🍪 쿠키 안내</h2>
+            <p>현재 보유 중인 쿠키: <strong>{{ request.user.points|default:'0' }}개</strong></p>
+            <ul>
+                <li>회원가입 시 <strong>200개</strong> 제공</li>
+                <li>리뷰 작성 시 <strong>10개</strong> 제공</li>
+                <li>사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                <li>챗 이용 시 <strong>10개</strong> 차감</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+<script>
+    function openModal() {
+        document.getElementById('myModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('myModal').style.display = 'none';
+    }
+
+    function toggleDropdown() {
+        document.getElementById("profile-dropdown").classList.toggle("show");
+    }
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.profile-img')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+</script>
+</html>
