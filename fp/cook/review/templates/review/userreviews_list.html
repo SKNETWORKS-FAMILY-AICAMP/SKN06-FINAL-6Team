@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>리뷰 게시판</h2>
+    <a href="{% url 'userreviews_create' %}">리뷰 작성</a>
+
+    <form method="GET">
+        <input type="text" name="query" placeholder="메뉴 검색" value="{{ query }}">
+        <button type="submit">검색</button>
+    </form>
+
+    <label for="sort">정렬:</label>
+    <select id="sort" onchange="sortReviews(this.value)">
+        <option value="latest" {% if sort == "latest" %}selected{% endif %}>최신순</option>
+        <option value="views" {% if sort == "views" %}selected{% endif %}>조회순</option>
+        <option value="rating" {% if sort == "rating" %}selected{% endif %}>별점순</option>
+    </select>
+
+    <div class="userreviews-list">
+        {% for userreviews in userreviews_list %}
+            <div class="userreviews-item">
+                <a href="{% url 'userreviews_detail' userreviews.id %}" class="menu-name">
+                    {{ recipe.0 }} 
+                </a>
+                <a href="{% url 'userreviews_list' %}?query={{ userreviews.user.nickname }}" class="author-name">
+                    {{ userreviews.user.nickname }}
+                </a>
+                <div class="rating">
+                    <span class="star-display">★</span>
+                    <span class="rating-value">{{ userreviews.rating }}</span>
+                </div>
+            </div>
+        {% empty %}
+            <p>작성된 리뷰가 없습니다.</p>
+        {% endfor %}
+    </div>
+
+    <script>
+        function sortReviews(sortValue) {
+            const queryParams = new URLSearchParams(window.location.search);
+            queryParams.set('sort', sortValue);
+            window.location.search = queryParams.toString();
+        }
+    </script>
+
+    <style>
+        .review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .review-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .menu-name, .author-name {
+            width: 150px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid black;
+            padding: 5px;
+            text-decoration: none;
+            color: black;
+        }
+        .author-name:hover {
+            color: blue;
+            text-decoration: underline;
+        }
+        .rating {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            user-select: none;
+        }
+        .star-display {
+            color: gold;
+        }
+        .rating-value {
+            font-size: 20px;
+            color: black;
+            font-weight: bold;
+        }
+    </style>
+{% endblock %}

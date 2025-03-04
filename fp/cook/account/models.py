@@ -44,9 +44,11 @@ class Users(AbstractBaseUser, PermissionsMixin):  # ✅ 'CustomUser' → 'Users'
     user_photo = models.ImageField(upload_to='profile_pictures/', null=True, blank=True, verbose_name="프로필 사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입일")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="정보 수정일")
-
+    verification_code = models.CharField(max_length=6, null=True, blank=True, verbose_name="인증 코드")
+    verification_expires_at = models.DateTimeField(null=True, blank=True, verbose_name="인증 코드 만료 시간")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    full_name = models.CharField(max_length=100, null=False, blank=True, verbose_name="이름")
 
     objects = CustomUserManager()
 
@@ -56,18 +58,18 @@ class Users(AbstractBaseUser, PermissionsMixin):  # ✅ 'CustomUser' → 'Users'
     def __str__(self):
         return self.login_id
 
-class EmailVerification(models.Model):
-    user = models.ForeignKey('Users', on_delete=models.CASCADE, null=True, blank=True)
-    email = models.EmailField()  # 이메일 인증을 요청한 이메일
-    verification_code = models.CharField(max_length=6)  # 6자리 인증 코드
-    purpose = models.CharField(max_length=20, choices=[('signup', '회원가입'), ('reset_password', '비밀번호 재설정')])  
-    expires_at = models.DateTimeField(default=timezone.now() + datetime.timedelta(minutes=10))  # 인증번호 만료 시간
-    is_verified = models.BooleanField(default=False)  # 인증 여부
+# class EmailVerification(models.Model):
+#     user = models.ForeignKey('Users', on_delete=models.CASCADE, null=True, blank=True)
+#     email = models.EmailField()  # 이메일 인증을 요청한 이메일
+#     verification_code = models.CharField(max_length=6)  # 6자리 인증 코드
+#     purpose = models.CharField(max_length=20, choices=[('signup', '회원가입'), ('reset_password', '비밀번호 재설정')])  
+#     expires_at = models.DateTimeField(default=timezone.now() + datetime.timedelta(minutes=10))  # 인증번호 만료 시간
+#     is_verified = models.BooleanField(default=False)  # 인증 여부
 
-    created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
+#     created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
 
-    def __str__(self):
-        return f"{self.email} - {self.verification_code} ({self.purpose})"
+#     def __str__(self):
+#         return f"{self.email} - {self.verification_code} ({self.purpose})"
 
 class PointTransaction(models.Model):
     user = models.ForeignKey(Users, on_delete=models.CASCADE)  # 포인트를 지급받은 사용자

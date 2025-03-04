@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>{{ userreviews.menu.menu_name }}</h2>
+    <p><strong>작성자:</strong> {{ userreviews.user.nickname }}</p>
+    <p><strong>별점:</strong> <span class="star-display">★</span> {{ userreviews.rating }}</p>
+    <p>{{ userreviews.review_text }}</p>
+    {% if userreviews.images.all %}
+        <div class="review-images">
+            {% for image in userreviews.images.all %}
+                <img src="{{ image.image_url }}" class="review-image">
+            {% endfor %}
+        </div>
+    {% endif %}
+    <p><strong>조회수:</strong> {{ review.views }}</p>
+    <p>{{ review.review_text }}</p>
+
+     <!-- 첫 번째 사진 + 추가 사진 개수 표시 (클릭 시 갤러리 열기) -->
+     {% if review.images.all %}
+     <div class="review-images">
+         <div class="main-image">
+             <img src="{{ review.images.first.image.url }}" alt="리뷰 이미지" class="review-image">
+             {% if review.images.all|length > 1 %}
+                 <span class="image-count" onclick="openGallery()">+{{ review.images.all|length|add:"-1" }}</span>
+             {% endif %}
+         </div>
+     </div>
+ {% endif %}
+
+ <!-- 갤러리 모달 (클릭 시 전체 화면 보기) -->
+ <div id="image-gallery" class="gallery-modal">
+     <span class="close" onclick="closeGallery()">&times;</span>
+     <div class="gallery-wrapper">
+         {% for image in review.images.all %}
+             <img src="{{ image.image.url }}" class="gallery-image" onclick="openFullScreen({{ forloop.counter0 }})">
+         {% endfor %}
+     </div>
+ </div>
+
+ <!-- 전체 화면 모달 (좌우 이동 가능) -->
+ <div id="fullscreen-modal" class="fullscreen-modal">
+     <span class="close" onclick="closeFullScreen()">&times;</span>
+     <span class="arrow left" onclick="changeImage(-1)">&#10094;</span>
+     <img id="fullscreen-image" class="fullscreen-image">
+     <span class="arrow right" onclick="changeImage(1)">&#10095;</span>
+ </div>
+
+
+    <!-- 댓글 목록 -->
+    <h3>댓글</h3>
+    <ul id="comment-list">
+        {% for comment in userreviews.comments.all %}
+            <li>
+                <strong>{{ comment.user.nickname }}</strong>: {{ comment.comment_text }}
+                <button class="like-btn" onclick="likeComment({{ comment.id }})">👍 좋아요 (<span id="like-count-{{ comment.id }}">{{ comment.like_count }}</span>)</button>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <script>
+        function likeComment(commentId) {
+            fetch(`/comment/${commentId}/like/`, {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById(`like-count-${commentId}`).innerText = data.like_count;
+            });
+        }
+    </script>
+    <a href="{% url 'userreviews_list' %}">목록으로</a>
+{% endblock %}

@@ -200,7 +200,7 @@
     {% if request.user.is_authenticated %}
     <div id="sidebar">
         <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
-        <button onclick="location.href='{% url 'review_list' %}'">리뷰 게시판</button>
+        <button onclick="location.href='{% url 'userreviews_list' %}'">리뷰 게시판</button>
         <button onclick="startNewChat()">새 채팅 시작</button>
         <h2>이전 채팅 목록</h2>
         <ul id="sessionList">

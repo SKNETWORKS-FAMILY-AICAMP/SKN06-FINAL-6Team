@@ -1,19 +1,60 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponse
 from django.contrib.auth.decorators import login_required
-from .models import Chats, HistoryChat, ChatRecommendations
+from .models import Chats, HistoryChat, ChatRecommendations, ManRecipes, FridgeRecipes, FunsRecipes
 import json
 from .llm import mkch
+import random
 # LLM 체인 생성
+
 llm_chain = mkch()
+def get_recommended_recipe():
+    sources = [ManRecipes, FridgeRecipes, FunsRecipes]
+    selected_model = random.choice(sources)
+    recipe = selected_model.objects.order_by("?").first()
+    return recipe
 
-# 비회원은 historychat을 볼 수 없음. 로그인된 사용자만 자신의 채팅 세션을 조회 가능.
+def get_user_chat_history(user_id):
+    """사용자의 기존 채팅 기록 ID를 가져오거나, 없으면 새로 생성"""
+    chat_history = HistoryChat.objects.filter(user_id=user_id).order_by('-created_at').first()
+    
+    if chat_history:
+        return chat_history.history_id  # 기존 기록 반환
+    else:
+        # 새 히스토리 생성 후 반환
+        new_chat = HistoryChat.objects.create(user_id=user_id, question_content="", response_content="")
+        return new_chat.history_id
+
 def chat_view(request):
-    chat_sessions = Chats.objects.filter(user=request.user) if request.user.is_authenticated else []
-    return render(request, "chat/chat.html", {"chat_sessions": chat_sessions})
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            question = data.get('question')
 
-# 새로운 채팅을 시작할 때 기존 채팅을 HistoryChat으로 이전.
-# 비회원은 새로운 채팅을 시작할 수 없음.
+            # 비회원 여부 확인
+            if request.user.is_authenticated:
+                user_id = request.user.user_id  # 로그인한 사용자 ID
+                history_id = get_user_chat_history(user_id)  # 기존 히스토리 조회 or 생성
+            else:
+                user_id = None  # 비회원은 ID 없음
+                history_id = None  # 비회원은 채팅 기록 없음
+
+            # 비회원일 경우에도 `config`에서 None을 허용하도록 수정
+            response = llm_chain.invoke(
+                {'question': question}, 
+                config={'configurable': {'user_id': user_id or 'guest', 'history_id': history_id or 'guest'}}
+            )
+
+            return JsonResponse({"response": response})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "잘못된 JSON 형식입니다."}, status=400)
+
+    # 🔹 GET 요청 처리: 채팅 화면 렌더링
+    return render(request, "chat/chat.html")
+
+
+
 @login_required
 def new_chat(request):
     if request.method == "POST":
@@ -38,28 +79,28 @@ def chat_api(request):
             user_message = data.get("message", "").strip()
             if not user_message:
                 return JsonResponse({"error": "메시지를 입력해주세요."}, status=400)
-            
-            # 비회원이 한 번 질문했는지 확인
+
             if not request.user.is_authenticated:
                 if request.session.get("question_asked", False):
                     return JsonResponse({"error": "비회원 사용자는 한 번만 질문할 수 있습니다."}, status=403)
                 request.session["question_asked"] = True
-            
-            response = generate_chat_response(user_message)
+
+            response = llm_chain.invoke({"question": user_message})
+
             chat = Chats.objects.create(
                 user=request.user if request.user.is_authenticated else None,
                 question_content=user_message,
                 response_content=response
             )
-            
-            # AI 추천 메뉴를 ChatRecommendations에 저장 (비회원은 저장 안 됨)
+
             if request.user.is_authenticated:
+                recommended_recipe = get_recommended_recipe()
                 ChatRecommendations.objects.create(
                     chat=chat,
                     user=request.user,
-                    recommended_menu_id=1  # 임시 데이터, 실제 추천 로직 필요
+                    recommended_menu_id=recommended_recipe.recipe_id
                 )
-            
+
             return JsonResponse({"response": response, "chat_id": chat.chat_id})
         except json.JSONDecodeError:
             return JsonResponse({"error": "잘못된 JSON 형식입니다."}, status=400)

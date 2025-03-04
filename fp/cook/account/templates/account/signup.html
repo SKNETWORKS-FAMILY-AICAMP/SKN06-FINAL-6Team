@@ -134,11 +134,12 @@
             let value = document.getElementById(`id_${field}`).value;
             let errorDiv = document.getElementById(`${field}-error`);
 
-            fetch(`/api/check-duplicate/?field=${field}&value=${value}`)
+            // 중복 확인 API 호출 (field와 value를 제대로 전달)
+            fetch(`/account/api/check-duplicate/?field=${field}&value=${value}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.exists) {
-                        errorDiv.innerText = `이미 사용 중인 ${field}입니다.`;
+                        errorDiv.innerText = `${field}은 이미 사용 중입니다.`;
                     } else {
                         errorDiv.innerText = "";
                     }
@@ -158,10 +159,12 @@
         <form method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
             {% csrf_token %}
 
-            <label for="id_username">아이디</label>
-            <input type="text" name="username" id="id_username" required onblur="checkDuplicate('username')">
+            <!-- 아이디 입력 필드 추가 -->
+            <label for="id_login_id">아이디</label>
+            <input type="text" name="login_id" id="id_login_id" required onblur="checkDuplicate('login_id')">
             <div id="username-error" class="error-message"></div>
 
+            <!-- 비밀번호 입력 -->
             <label for="id_password1">비밀번호</label>
             <div class="password-container">
                 <input type="password" name="password1" id="id_password1" required>
@@ -171,6 +174,7 @@
                         onmouseleave="hidePassword('id_password1')">🔒</button>
             </div>
 
+            <!-- 비밀번호 확인 -->
             <label for="id_password2">비밀번호 확인</label>
             <div class="password-container">
                 <input type="password" name="password2" id="id_password2" required>
@@ -181,19 +185,24 @@
             </div>
             <div id="error-message" class="error-message"></div>
 
+            <!-- 이름 입력 -->
+            <label for="id_full_name">이름</label>
+            <input type="text" name="full_name" id="id_full_name" required>
+
+            <!-- 이메일 입력 -->
             <label for="id_email">이메일</label>
             <input type="email" name="email" id="id_email" required onblur="checkDuplicate('email')">
             <div id="email-error" class="error-message"></div>
 
-            <label for="id_full_name">이름</label>
-            <input type="text" name="full_name" id="id_full_name" required>
-
+            <!-- 별명 입력 -->
             <label for="id_nickname">별명</label>
             <input type="text" name="nickname" id="id_nickname" required>
 
+            <!-- 생년월일 입력 -->
             <label for="id_birthdate">생년월일</label>
             <input type="date" name="birthdate" id="id_birthdate" required>
 
+            <!-- 프로필 사진 -->
             <label for="id_profile_picture">프로필 사진 (선택 사항)</label>
             <input type="file" name="profile_picture" id="id_profile_picture">
 

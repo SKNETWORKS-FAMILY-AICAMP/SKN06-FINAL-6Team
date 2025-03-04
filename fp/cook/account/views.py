@@ -3,14 +3,17 @@ from django.http import JsonResponse
 import requests
 import random
 import string
+from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.contrib import messages
-from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, EmailVerificationForm, UserUpdateForm, PasswordResetForm
-from .models import Users, EmailVerification, PointTransaction
+from .forms import CustomUserCreationForm, FindIDForm, FindPWForm, UserUpdateForm, PasswordResetForm # ,EmailVerificationForm,
+from .models import Users, PointTransaction #EmailVerification,
 from django.db import transaction
+from django.utils import timezone
+import datetime
 
 User = get_user_model()
 
@@ -93,6 +96,44 @@ def find_id(request):
 
 
 # 비밀번호 찾기 (아이디 + 이메일)
+# def find_pw(request):
+#     if request.method == "POST":
+#         form = FindPWForm(request.POST)
+#         if form.is_valid():
+#             login_id = form.cleaned_data["login_id"]
+#             email = form.cleaned_data["email"]
+
+#             try:
+#                 user = Users.objects.get(login_id=login_id, email=email)
+
+#                 # 인증 코드 생성 및 저장
+#                 verification_code = "".join(random.choices(string.digits, k=6))
+#                 EmailVerification.objects.create(
+#                     user=user,
+#                     email=email,
+#                     verification_code=verification_code,
+#                     purpose="reset_password"
+#                 )
+
+#                 # 이메일 전송
+#                 send_mail(
+#                     "비밀번호 재설정 인증번호",
+#                     f"인증번호: {verification_code} (10분 내 입력)",
+#                     "noreply@cookit.com",
+#                     [email],
+#                     fail_silently=False
+#                 )
+
+#                 request.session["reset_email"] = email
+#                 return redirect("verify_email_code")
+#             except Users.DoesNotExist:
+#                 messages.error(request, "입력한 정보와 일치하는 계정이 없습니다.")
+#     else:
+#         form = FindPWForm()
+
+#     return render(request, "account/find_pw.html", {"form": form})
+
+
 def find_pw(request):
     if request.method == "POST":
         form = FindPWForm(request.POST)
@@ -105,12 +146,11 @@ def find_pw(request):
 
                 # 인증 코드 생성 및 저장
                 verification_code = "".join(random.choices(string.digits, k=6))
-                EmailVerification.objects.create(
-                    user=user,
-                    email=email,
-                    verification_code=verification_code,
-                    purpose="reset_password"
-                )
+
+                # `Users` 모델에 인증 코드 저장
+                user.verification_code = verification_code
+                user.verification_expires_at = timezone.now() + datetime.timedelta(minutes=10)  # 인증 코드 만료 시간 (10분)
+                user.save()
 
                 # 이메일 전송
                 send_mail(
@@ -118,7 +158,7 @@ def find_pw(request):
                     f"인증번호: {verification_code} (10분 내 입력)",
                     "noreply@cookit.com",
                     [email],
-                    fail_silently=False
+                    fail_silently=False,
                 )
 
                 request.session["reset_email"] = email
@@ -228,8 +268,60 @@ def kakao_delete_account(request):
     messages.success(request, "카카오 계정이 성공적으로 삭제되었습니다.")
     return redirect("login")
 
+# def send_otp_email(request):
+#     """이이메일로 6자리 OTP 인증번호 전송"""
+#     email = request.session.get("reset_email")
+
+#     if email:
+#         otp = "".join(random.choices(string.digits, k=6))
+#         request.session["otp_code"] = str(otp)
+#         request.session["is_verified"] = False
+
+#         # 이메일 전송
+#         send_mail(
+#             "비밀번호 재설정 인증번호",
+#             f"인증번호: {otp} (5분 내에 입력해주세요.)",
+#             "cookitcookeat@gmail.com",
+#             [email],
+#             fail_silently=False,
+#         )
+
+#         # EmailVerification 모델에 인증 코드 저장
+#         verification = EmailVerification.objects.create(
+#             email=email,
+#             verification_code=otp,
+#             purpose="reset_password",  # 비밀번호 재설정용
+#             expires_at=timezone.now() + datetime.timedelta(minutes=10)  # 10분 뒤 만료
+#         )
+
+#         return render(request, "account/send_email_code.html", {"email": email})
+#     else:
+#         return redirect("find_pw")
+
+
+# def verify_otp(request):
+#     """사용자가 입력한 OTP 인증번호 검증"""
+#     if request.method == "POST":
+#         code = request.POST.get("code")
+
+#         # 세션에서 인증번호 확인
+#         otp_code = request.session.get("otp_code")
+#         reset_email = request.session.get("reset_email")
+
+#         if otp_code and reset_email and str(code) == str(otp_code):
+#             # 인증이 성공하면 세션에 정보 저장
+#             request.session["is_verified"] = True
+#             request.session["email_for_password_reset"] = reset_email
+#             messages.success(request, "인증이 완료되었습니다! 비밀번호를 재설정하세요.")
+#             return redirect("reset_password")
+#         else:
+#             # 인증 실패 메시지
+#             messages.error(request, "인증번호가 일치하지 않거나 만료되었습니다.")
+    
+#     return render(request, "account/verify_email_code.html")
+
 def send_otp_email(request):
-    """이이메일로 6자리 OTP 인증번호 전송"""
+    """이메일로 6자리 OTP 인증번호 전송"""
     email = request.session.get("reset_email")
 
     if email:
@@ -246,17 +338,10 @@ def send_otp_email(request):
             fail_silently=False,
         )
 
-        # EmailVerification 모델에 인증 코드 저장
-        verification = EmailVerification.objects.create(
-            email=email,
-            verification_code=otp,
-            purpose="reset_password",  # 비밀번호 재설정용
-            expires_at=timezone.now() + datetime.timedelta(minutes=10)  # 10분 뒤 만료
-        )
-
-        return render(request, "account/send_email_code.html", {"email": email})
+        return JsonResponse({'success': True})  # 인증번호 전송 후 성공을 클라이언트에 알림
     else:
-        return redirect("find_pw")
+        return JsonResponse({'success': False, 'error': '이메일을 먼저 입력하세요.'})
+
 
 
 def verify_otp(request):
@@ -268,16 +353,16 @@ def verify_otp(request):
         otp_code = request.session.get("otp_code")
         reset_email = request.session.get("reset_email")
 
-        if otp_code and reset_email and str(code) == str(otp_code):
-            # 인증이 성공하면 세션에 정보 저장
+        # DB에서 저장된 verification_code 확인
+        user = Users.objects.get(email=reset_email)
+        if user.verification_code == str(code) and user.verification_expires_at > timezone.now():
             request.session["is_verified"] = True
             request.session["email_for_password_reset"] = reset_email
             messages.success(request, "인증이 완료되었습니다! 비밀번호를 재설정하세요.")
             return redirect("reset_password")
         else:
-            # 인증 실패 메시지
             messages.error(request, "인증번호가 일치하지 않거나 만료되었습니다.")
-    
+
     return render(request, "account/verify_email_code.html")
 
 # 회원탈퇴
@@ -287,3 +372,20 @@ def delete_account(request):
     user.delete()
     messages.success(request, "회원 탈퇴가 완료되었습니다.")
     return redirect('home')
+
+def check_duplicate(request):
+    """아이디 또는 이메일 중복 확인 API"""
+    field = request.GET.get('field')  # 'username' 또는 'email'
+    value = request.GET.get('value')  # 아이디 또는 이메일 값
+
+    # 필드와 값이 유효한지 확인
+    if field not in ['login_id', 'email'] or not value:
+        return JsonResponse({'error': 'Invalid parameters'}, status=400)
+
+    # 중복 확인
+    if field == 'login_id':
+        exists = User.objects.filter(username=value).exists()
+    elif field == 'email':
+        exists = User.objects.filter(email=value).exists()
+
+    return JsonResponse({'exists': exists})

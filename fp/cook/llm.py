@@ -51,7 +51,7 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
 
 def load(case):
     if case == "funs":
-        conn = sqlite3.connect("./chat/db/funs.db")
+        conn = sqlite3.connect("funs.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
@@ -62,7 +62,7 @@ def load(case):
         return docs
     
     elif case == "ref":
-        conn = sqlite3.connect("./chat/db/fridges.db")
+        conn = sqlite3.connect("fridges.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
@@ -73,7 +73,7 @@ def load(case):
         return docs
     
     else:
-        conn = sqlite3.connect("./chat/db/man.db")
+        conn = sqlite3.connect("man.db")
         df = pd.read_sql("SELECT * FROM processed_data", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe'] + " ||| " + df['category'] + " ||| " + df['info'] + " ||| " + df['intro']
@@ -131,9 +131,9 @@ def mkch():
     prompt_template = ChatPromptTemplate(messages)
 
     # retriever 로드 => 추후 함수 선택 코드 넣어야 함
-    rbm25_retr, rfais_retr = load_retriever("ref", "./chat/faiss/ref_faiss") # 냉장고를 부탁해
-    fbm25_retr, ffais_retr = load_retriever("funs", "./chat/faiss/fun_faiss") # 편스토랑
-    mbm25_retr, mfais_retr = load_retriever("man", "./chat/faiss/man_faiss") # 만개의 레시피
+    rbm25_retr, rfais_retr = load_retriever("ref", "ref_faiss") # 냉장고를 부탁해
+    fbm25_retr, ffais_retr = load_retriever("funs", "fun_faiss") # 편스토랑
+    mbm25_retr, mfais_retr = load_retriever("man", "man_faiss") # 만개의 레시피
 
     ensemble1 = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
     ensemble2 = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
@@ -201,3 +201,4 @@ def chat(user_id):
         res = chain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
         print(res)
 
+chat("suy")

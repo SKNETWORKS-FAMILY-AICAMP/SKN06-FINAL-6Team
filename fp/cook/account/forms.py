@@ -7,7 +7,7 @@ from .models import Users
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
         model = Users
-        fields = ['login_id', 'email', 'nickname', 'birthdate', 'user_photo']
+        fields = ['login_id', 'email', 'nickname', 'birthdate', 'user_photo', 'full_name', 'password']
     
     def clean_email(self):
         """이메일 중복 체크"""
@@ -22,7 +22,22 @@ class CustomUserCreationForm(UserCreationForm):
         if Users.objects.filter(nickname=nickname).exists():
             raise forms.ValidationError("이미 사용 중인 닉네임입니다.")
         return nickname
-
+    
+    def clean_login_id(self):
+        """닉네임 중복 체크"""
+        login_id = self.cleaned_data.get('login_id')
+        if Users.objects.filter(login_id=login_id).exists():
+            raise forms.ValidationError("이미 사용 중인 아이디디입니다.")
+        return login_id
+    
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("비밀번호가 일치하지 않습니다.")
+        
+        return password2
 
 # 로그인 폼 (아이디 + 비밀번호)
 class CustomAuthenticationForm(AuthenticationForm):

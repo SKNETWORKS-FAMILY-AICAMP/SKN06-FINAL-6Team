@@ -9,7 +9,8 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),           # 회원가입
     path('login/', views.login_view, name='login'),         # 로그인
     path('logout/', views.logout_view, name='logout'),      # 로그아웃
-
+    path('api/check-duplicate/', views.check_duplicate, name='check_duplicate'), # 중복 확인
+ 
     # 카카오 로그인 관련 (RESTful 규칙에 맞게 네이밍 수정)
     path("login/kakao/", kakao_login, name="kakao_login"),  
     path("login/kakao/callback/", kakao_callback, name="kakao_callback"),
