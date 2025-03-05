@@ -131,11 +131,7 @@
         <form method="post" action="{% url 'login' %}">
             {% csrf_token %}
 
-            <label for="id_login_id">아이디:</label>
-            <input type="text" name="login_id" required>
-
-            <label for="id_password">비밀번호:</label>
-            <input type="password" name="password" required>
+            {{ form.as_p }}
 
             <button type="submit">로그인</button>
 
@@ -163,3 +159,4 @@
     </div>
 </body>
 </html>
+

@@ -1,82 +1,79 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.utils import timezone
-import datetime
 
-class CustomUserManager(BaseUserManager):
-    """사용자 계정 생성 매니저"""
-    def create_user(self, login_id, email, password=None, **extra_fields):
-        if not login_id:
-            raise ValueError("로그인 아이디는 필수입니다.")
-        email = self.normalize_email(email)
-        user = self.model(login_id=login_id, email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, login_id, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        return self.create_user(login_id, email, password, **extra_fields)
-
-class Users(AbstractBaseUser, PermissionsMixin):  # ✅ 'CustomUser' → 'Users' 변경
-    """사용자 모델"""
-    PROVIDER_CHOICES = (
-        ('local', 'Local'),
-        ('kakao', 'Kakao'),
-    )
-
-    STATUS_CHOICES = (
+### 1. Users 테이블 (사용자 정보)
+class Users(models.Model):
+    STATUS_CHOICES = [
         ('active', 'Active'),
         ('deactivated', 'Deactivated'),
-    )
+    ]
 
-    user_id = models.AutoField(primary_key=True)  # 기본키
-    login_id = models.CharField(max_length=50, unique=True, verbose_name="로그인 ID")
-    email = models.EmailField(max_length=100, unique=True, null=True, blank=True, verbose_name="이메일")
-    password = models.CharField(max_length=255, null=True, blank=True, verbose_name="비밀번호")
-    nickname = models.CharField(max_length=30, unique=True, verbose_name="별명")
-    birthdate = models.DateField(null=True, blank=True, verbose_name="생년월일")
-    points = models.PositiveIntegerField(default=200, verbose_name="쿠키")  # 기본값 200
-    provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='local', verbose_name="로그인 제공자")
-    provider_id = models.CharField(max_length=100, unique=True, null=True, blank=True, verbose_name="소셜 로그인 ID")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name="회원 상태")
-    user_photo = models.ImageField(upload_to='profile_pictures/', null=True, blank=True, verbose_name="프로필 사진")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입일")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="정보 수정일")
-    verification_code = models.CharField(max_length=6, null=True, blank=True, verbose_name="인증 코드")
-    verification_expires_at = models.DateTimeField(null=True, blank=True, verbose_name="인증 코드 만료 시간")
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    full_name = models.CharField(max_length=100, null=False, blank=True, verbose_name="이름")
+    PROVIDER_CHOICES = [
+        ('local', 'Local'),
+        ('kakao', 'Kakao'),
+    ]
 
-    objects = CustomUserManager()
-
-    USERNAME_FIELD = 'login_id'
-    REQUIRED_FIELDS = ['email']
+    user_id = models.AutoField(primary_key=True)
+    login_id = models.CharField(max_length=50, unique=True, null=False)  # local 전용 로그인 ID
+    provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='local', null=False)
+    provider_id = models.CharField(max_length=100, unique=True, null=True, blank=True)  # 소셜 로그인 ID (NULL 허용)
+    email = models.EmailField(max_length=100, unique=True, null=False)  # 이메일 (NOT NULL)
+    password = models.CharField(max_length=255, null=False)  # 비밀번호 (NOT NULL, 해싱 저장)
+    nickname = models.CharField(max_length=50, unique=True, null=False)  # 별명 (NOT NULL)
+    birthday = models.DateField(null=False)  # 생년월일 (NOT NULL)
+    points = models.IntegerField(default=200, null=False)  # 기본 포인트 200
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='active', null=False)  # 계정 상태
+    user_photo = models.CharField(max_length=255, null=True, blank=True)  # 프로필 사진 (NULL 가능)
+    name = models.CharField(max_length=50, null=False)  # 사용자 본명 (NOT NULL)
+    email_verified_at = models.DateTimeField(null=True, blank=True)  # 이메일 인증 완료 시간 (NULL 가능)
+    verification_code = models.CharField(max_length=6, null=True, blank=True)  # 이메일 인증번호 (NULL 가능)
+    verification_expires_at = models.DateTimeField(null=True, blank=True)  # 인증번호 만료 시간 (NULL 가능)
+    created_at = models.DateTimeField(auto_now_add=True)  # 계정 생성 시간
+    updated_at = models.DateTimeField(auto_now=True)  # 계정 정보 수정 시간
 
     def __str__(self):
-        return self.login_id
+        return self.nickname
 
-# class EmailVerification(models.Model):
-#     user = models.ForeignKey('Users', on_delete=models.CASCADE, null=True, blank=True)
-#     email = models.EmailField()  # 이메일 인증을 요청한 이메일
-#     verification_code = models.CharField(max_length=6)  # 6자리 인증 코드
-#     purpose = models.CharField(max_length=20, choices=[('signup', '회원가입'), ('reset_password', '비밀번호 재설정')])  
-#     expires_at = models.DateTimeField(default=timezone.now() + datetime.timedelta(minutes=10))  # 인증번호 만료 시간
-#     is_verified = models.BooleanField(default=False)  # 인증 여부
+### 2. LoginSessions 테이블 (로그인 세션 관리)
+class LoginSessions(models.Model):
+    session_id = models.CharField(max_length=255, primary_key=True)  # 세션 고유 ID
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)  # 로그인한 사용자 (NOT NULL)
+    created_at = models.DateTimeField(auto_now_add=True)  # 로그인 시간
+    expired_at = models.DateTimeField(null=True, blank=True)  # 세션 만료 시간 (NULL 가능)
 
-#     created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
+    def __str__(self):
+        return f"Session {self.session_id} for {self.user.nickname}"
 
-#     def __str__(self):
-#         return f"{self.email} - {self.verification_code} ({self.purpose})"
-
+### 3. PointTransaction 테이블 (포인트 변동 내역)
 class PointTransaction(models.Model):
-    user = models.ForeignKey(Users, on_delete=models.CASCADE)  # 포인트를 지급받은 사용자
-    change_amount = models.IntegerField()  # 포인트 변동량 (+200 같은 값)
-    transaction_type = models.CharField(max_length=10, choices=[('earn', '적립'), ('spend', '사용')])
-    reason = models.CharField(max_length=255)  # 포인트 지급 이유 (예: "회원가입 보너스")
-    created_at = models.DateTimeField(auto_now_add=True)  # 포인트 지급 날짜
+    TRANSACTION_TYPE_CHOICES = [
+        ('earn', 'Earn'),
+        ('spend', 'Spend'),
+    ]
+
+    transaction_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)  # 포인트 변동 사용자 (NOT NULL)
+    change_amount = models.IntegerField(null=False)  # 포인트 변경 값 (NOT NULL)
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, null=False)  # 적립/사용 구분 (NOT NULL)
+    reason = models.CharField(max_length=255, null=False)  # 포인트 변동 사유 (NOT NULL)
+    updated_at = models.DateTimeField(auto_now_add=True)  # 포인트 변경 시간
 
     def __str__(self):
-        return f"{self.user.login_id} - {self.change_amount} ({self.reason})"
+        return f"{self.user.nickname} - {self.transaction_type} {self.change_amount} points"
+
+### 4. AdminLogs 테이블 (관리자 활동 기록)
+class AdminLog(models.Model):
+    ACTION_CHOICES = [
+        ('modify_points', 'Modify Points'),
+        ('delete_review', 'Delete Review'),
+        ('ban_user', 'Ban User'),
+    ]
+
+    log_id = models.AutoField(primary_key=True)
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES, null=False)  # 관리자 수행 작업 (NOT NULL)
+    user = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, blank=True)  # 관리자 처리 사용자 (NULL 가능)
+    review = models.ForeignKey('review.UserReviews', on_delete=models.SET_NULL, null=True, blank=True)  # 처리된 리뷰 (NULL 가능)
+    comment = models.ForeignKey('review.ReviewComments', on_delete=models.SET_NULL, null=True, blank=True)  # 처리된 댓글 (NULL 가능)
+    created_at = models.DateTimeField(auto_now_add=True)  # 작업 수행 시간 (NOT NULL)
+
+    def __str__(self):
+        return f"{self.get_action_type_display()} - {self.created_at}"
