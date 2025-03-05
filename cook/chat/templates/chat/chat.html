@@ -331,64 +331,91 @@
     
     <script>
         async function startNewChat() {
-            let response = await fetch("/chat/api/new_chat/", { 
-                method: "POST", 
-                headers: { "X-CSRFToken": "{{ csrf_token }}" } 
-            });
+            try {
+                let response = await fetch("/chat/api/chat/new/", {  // ✅ 수정된 경로
+                    method: "POST",
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" }
+                });
 
-            let data = await response.json();
+                let data = await response.json();
 
-            if (data.success) {
-                alert("새 채팅이 시작되었습니다.");
-                document.getElementById("chat-box").innerHTML = ""; // 채팅 초기화
+                if (data.success) {
+                    alert("새 채팅이 시작되었습니다.");
+                    document.getElementById("chat-box").innerHTML = ""; // 채팅창 초기화
 
-                loadChatSessions(data.chat_id);  // ✅ 방금 만든 세션 ID를 넘겨서, 목록에서 제외!
-            } else {
-                alert("새 채팅을 생성할 수 없습니다.");
+                    console.log("✅ 새 채팅 생성 완료, 채팅 목록 갱신 시작...");
+                    await loadChatSessions();  // ✅ 목록 다시 불러오기
+                } else {
+                    alert("새 채팅을 생성할 수 없습니다.");
+                }
+            } catch (error) {
+                console.error("❌ 새 채팅 생성 실패:", error);
             }
         }
-        async function loadChatSessions(latestSessionId = null) {
-            let response = await fetch("/chat/api/chat_sessions/");
-            let data = await response.json();
-            let sessionList = document.getElementById("sessionList");
-            sessionList.innerHTML = "";  // ✅ 기존 목록 초기화
 
-            data.sessions.forEach(session => {
-                if (latestSessionId && session.session_id === latestSessionId) return; // ✅ 새로 생성된 세션은 목록에서 제외
+        async function loadChatSessions() {
+            try {
+                console.log("🔄 채팅 세션 목록을 불러오는 중...");
+                let response = await fetch("/chat/api/chat/sessions/");  // ✅ 올바른 API 경로
+                let data = await response.json();
+                let sessionList = document.getElementById("sessionList");
+                sessionList.innerHTML = "";  
 
-                let li = document.createElement("li");
-                
-                // 채팅 요약
-                let chatSummary = session.latest_message ? session.latest_message.substring(0, 10) : "메시지 없음";
-                
-                li.innerHTML = `
-                    <span onclick="loadChatHistory('${session.session_id}')" style="cursor:pointer;">
-                        ${chatSummary}
-                    </span>
-                    <button class="delete-btn" onclick="deleteChat('${session.session_id}')">x</button>
-                `;
+                if (data.sessions.length === 0) {
+                    sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
+                    return;
+                }
 
-                sessionList.appendChild(li);
-            });
+                data.sessions.forEach(session => {
+                    let li = document.createElement("li");
+                    li.innerHTML = `
+                        <span onclick="loadChatHistory('${session.session_id}')" style="cursor:pointer;">
+                            ${session.latest_message}
+                        </span>
+                        <button class="delete-btn" onclick="deleteChat('${session.session_id}')">x</button>
+                    `;
+                    sessionList.appendChild(li);
+                });
+            } catch (error) {
+                console.error("❌ 채팅 목록 불러오기 실패:", error);
+            }
         }
 
-        async function loadChatHistory(sessionId) {
-            let response = await fetch(`/api/chat/${sessionId}/`);
-            let data = await response.json();
-            let chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML = "";
+        document.addEventListener("DOMContentLoaded", function() {
+            loadChatSessions();
+        });
 
-            data.messages.forEach(msg => {
-                let sender = msg.is_ai_response ? "🤖 AI" : "👤 나";
-                let className = msg.is_ai_response ? "bot-message" : "user-message";
-                chatBox.innerHTML += `<div class="message ${className}"><strong>${sender}:</strong> ${msg.content}</div>`;
-            });
+        async function loadChatHistory(sessionId) {
+            try {
+                let response = await fetch(`/chat/api/chat/${sessionId}/`);  // ✅ 올바른 API 경로
+                let data = await response.json();
+                let chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = "";
+
+                if (data.messages.length === 0) {
+                    chatBox.innerHTML = "<p>이전 대화가 없습니다.</p>";  
+                    return;
+                }
+
+                data.messages.forEach(msg => {
+                    let sender = msg.sender === "AI" ? "🤖 AI" : "👤 나";
+                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
+
+                    let messageDiv = document.createElement("div");
+                    messageDiv.classList.add("message", className);
+                    messageDiv.innerHTML = `<strong>${sender}:</strong> ${msg.content}`;
+                    chatBox.appendChild(messageDiv);
+                });
+
+            } catch (error) {
+                console.error("채팅 내역 불러오기 실패:", error);
+            }
         }
         
         async function deleteChat(sessionId) {
             if (!confirm("정말 삭제하시겠습니까?")) return;
 
-            let response = await fetch(`/chat/api/delete_chat/${sessionId}/`, {
+            let response = await fetch(`/chat/api/chat/delete/${sessionId}/`, {  // ✅ 수정된 API 경로
                 method: "DELETE",
                 headers: { "X-CSRFToken": "{{ csrf_token }}" }
             });
@@ -403,7 +430,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            loadChatSessions();  // 페이지 로드 시 채팅 목록 불러오기
+            loadChatSessions();  // ✅ 페이지 로드 시 채팅 목록 불러오기
         });
     </script>
 

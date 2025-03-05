@@ -25,18 +25,41 @@ def new_chat(request):
     """새로운 채팅을 생성하고 ID 반환"""
     if request.method == "POST":
         session_id = str(uuid.uuid4())  # 랜덤한 UUID 생성
-        chat_session = ChatSession.objects.create(user=request.user, session_id=session_id)  
-        return JsonResponse({"success": True, "chat_id": chat_session.session_id})
+        chat_session = ChatSession.objects.create(user=request.user, session_id=session_id)
+        
+        print(f"✅ 새 채팅 세션 생성됨: {session_id}")  # 디버깅 로그
+
+        return JsonResponse({
+            "success": True,
+            "chat_id": chat_session.session_id
+        })
 
     return JsonResponse({"success": False}, status=400)
 
 def chat_history(request, session_id):
     """특정 세션의 채팅 내역을 불러옴"""
-    chat_session = get_object_or_404(ChatSession, session_id=session_id)  # 존재하는 세션인지 확인
-    messages = Message.objects.filter(session=chat_session).values("content", "response", "timestamp")
+    chat_session = get_object_or_404(ChatSession, session_id=session_id)
+    messages = Message.objects.filter(session=chat_session).order_by("timestamp")
+
+    message_list = []
+    for msg in messages:
+        # 사용자 입력 메시지 추가
+        message_list.append({
+            "content": msg.content,
+            "sender": "User",  # ✅ 사용자 메시지
+            "timestamp": msg.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        # AI 응답이 있다면 추가
+        if msg.response:
+            message_list.append({
+                "content": msg.response,
+                "sender": "AI",  # ✅ AI 응답
+                "timestamp": msg.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            })
+
     return JsonResponse({
         "session_id": session_id,
-        "messages": list(messages)
+        "messages": message_list
     })
 
 def chat_api(request):
@@ -91,29 +114,30 @@ def chat_api(request):
 
     return JsonResponse({"error": "잘못된 요청입니다."}, status=400)
 
-
 @login_required
 def chat_sessions(request):
     """사용자의 모든 채팅 세션 목록을 가져옴"""
     sessions = ChatSession.objects.filter(user=request.user).order_by("-created_at")
-    session_data = []
     
-    for session in sessions:
-        latest_message = Message.objects.filter(session=session).order_by("-timestamp").first()
-        session_data.append({
+    print(f"✅ {request.user.username}의 채팅 세션 개수: {sessions.count()}")  # 디버깅 로그
+
+    session_data = [
+        {
             "session_id": session.session_id,
-            "latest_message": latest_message.content if latest_message else None
-        })
-    
+            "latest_message": Message.objects.filter(session=session).order_by("-timestamp").first().content if Message.objects.filter(session=session).exists() else "메시지 없음",
+            "created_at": session.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        for session in sessions
+    ]
+
     return JsonResponse({"sessions": session_data})
 
 @login_required
 def delete_chat(request, session_id):
-    """특정 채팅 세션 삭제 (메시지 포함)"""
+    """특정 채팅 세션 삭제"""
     try:
         session = ChatSession.objects.get(session_id=session_id, user=request.user)
-        Message.objects.filter(session=session).delete()  # 메시지 삭제
-        session.delete()  # 채팅 세션 삭제
+        session.delete()
         return JsonResponse({"success": True})
     except ChatSession.DoesNotExist:
         return JsonResponse({"success": False, "error": "세션이 존재하지 않습니다."}, status=404)
