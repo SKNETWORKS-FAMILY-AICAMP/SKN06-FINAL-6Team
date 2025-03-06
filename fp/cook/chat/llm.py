@@ -1,203 +1,132 @@
-import random
-import string
-import sqlite3
-import pandas as pd
-from typing import List
 from textwrap import dedent
-from pydantic import BaseModel, Field
-
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import DataFrameLoader
-from langchain_community.vectorstores import FAISS
-from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever, MergerRetriever
-from langchain_core.messages import BaseMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import ConfigurableFieldSpec
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.chat_history import BaseChatMessageHistory
 from operator import itemgetter
+from chat.utils.retrievers import load_retriever
+from chat.utils.memories import get_session_history, mkhisid
 
+from langchain_openai import ChatOpenAI
+from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.output_parsers import StrOutputParser
+
+from chat.models import ChatSession, Chats
 from dotenv import load_dotenv
 
 load_dotenv()
 
-class InMemoryHistory(BaseChatMessageHistory, BaseModel):
-    """인메모리 히스토리 클래스"""
-    messages: List[BaseMessage] = Field(default_factory=list)
-
-    def add_messages(self, messages: List[BaseMessage]) -> None:
-        """Add a list of messages to the store"""
-        self.messages.extend(messages)
-
-    def clear(self) -> None:
-        self.messages = []
-
-## 임베딩 모델
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-
-## 모델
+# llm 모델, retriever 정의
 model = ChatOpenAI(model="gpt-4o-mini")
+retriever = load_retriever()
+contexts = [] # 이전 대화 retriever 결과 contexts 저장
 
-# 메모리 정의
-store = {}
-def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory:
-    if (user_id, history_id) not in store:
-        store[(user_id, history_id)] = InMemoryHistory()
-    print(f"현재 저장된 히스토리: {store}") # 디버깅용
-    return store[(user_id, history_id)]
+def format_docs(docs):
+    """retriever 결과 형태 변환 함수"""
+    for doc in docs:
+        content = {}
+        txt = doc.page_content.split(" ||| ")
+        keys = ["name", "ingrdients", "recipe", "category", "info", "intro"][:len(txt)]
+        content.update(dict(zip(keys, txt)))
+        content.update(doc.metadata)
+        contexts.append(content)
+    return contexts
 
-def load(case):
-    if case == "funs":
-        conn = sqlite3.connect("./chat/db/funs.db")
-        df = pd.read_sql("SELECT * FROM menu", conn)
 
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
-        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
-        return docs
-    
-    elif case == "ref":
-        conn = sqlite3.connect("./chat/db/fridges.db")
-        df = pd.read_sql("SELECT * FROM menu", conn)
+# 1. llm에 기본 질문/이전 질문의 파생 질문인지 확인하기
+@chain
+def intent(query):
+    intent_messages = [("system", dedent(
+        """
+        너는 사용자의 질문(question)을 분석해서 의도를 파악하고 [`기본 질문`, `레시피_영상 요청`] 둘 중에 하나로 return하는 ai야.
+        `레시피_영상 요청`은 사용자가 이전에 네가 답변한 답변에서 추가 질문을 하는건데 메뉴 이름만 언급할 수도 있고, 번호만 말할 수도 있어.
+        메뉴 이름을 언급한 경우에는 history에 그 요리 이름이 있으면 그 메뉴에 대한 `레시피_영상 요청`이고, 없으면 기본 질문으로 판단해.
+        단, "'요리 이름' 레시피 알려줘"처럼 요리 이름과 레시피 알려달라는 말을 같이하면 기본 질문이야.
+        이외 답변은 기본 질문으로 분류해. 답변은 [`기본 질문`, `레시피_영상 요청`] 중에 하나로만 답해. '-입니다'도 붙이지 말고 네가 분류한 결과가 무엇인지만 대답해.
+        """)),
+        MessagesPlaceholder(variable_name="history", optional=True),
+        ("human", "{question}")]
+    intent_prompt = ChatPromptTemplate(messages=intent_messages)
 
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
-        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
-        return docs
-    
-    else:
-        conn = sqlite3.connect("./chat/db/man.db")
-        df = pd.read_sql("SELECT * FROM processed_data", conn)
+    chk_intent_chain = intent_prompt | model | StrOutputParser()
+    return chk_intent_chain
 
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe'] + " ||| " + df['category'] + " ||| " + df['info'] + " ||| " + df['intro']
-        df.drop(columns=['name', 'ingredients', 'recipe', "info", "intro"], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(model_name='gpt-4o-mini', chunk_size=1000, chunk_overlap=0)
-        docs = loader.load_and_split(splitter)
-        return docs
-
-def load_retriever(case, faiss_path):
-    """ retriever 로드 함수"""
-    docs = load(case)
-
-    # vectordb 로드
-    fais = FAISS.load_local(faiss_path, embeddings, allow_dangerous_deserialization=True)
-
-    # BM25 retriever, FAISS retriever 앙상블
-    bm25_retr = BM25Retriever.from_documents(docs)
-    bm25_retr.k = 3
-    fais_retr = fais.as_retriever(search_kwargs={"k": 3})
-    
-    return bm25_retr, fais_retr
-
-def mkch():
-    # Prompt Template 생성
-    messages = [
-            ("system", dedent("""
-            # instruction
-            너는 사용자의 질문(question)에 맞는 요리를 알려주는 ai야.
-
-            사용자에게 요리를 알려줄 때 요리는 context 항목에 있는 요리 중에서 알려줘야해.
-            다음 조건을 참고해서 요리를 알려줘야해.
-            1. 사용자에게 요리를 추천할 때 요리 3가지를 추천한다. 그러나 사용자가 특정 요리의 레시피를 물어본 경우 해당하는 요리에 대한 정보를 제공한다. 
-            2. 요리를 소개할 때 요리 이름을 먼저 언급한 뒤 간단한 요리 소개(한줄 분량), 재료, 사진 순으로 소개한다.
-            2-1. 요리 이름에서 요리사 이름을 알 수 있다면 요리사 이름도 요리 이름과 같이 알려준다.
-            2-2. 사진은 context에서 `img`에 있는 해당 요리의 사진 링크를 알려준다. 만약 `img`에 사진 링크가 없다면 "제공할 수 있는 사진이 없습니다."라고 답한다.
-            2-3. 사진 링크를 임의로 생성하거나 다른 요리의 사진을 절대 알려주지 않는다.
-            
-            3. 요리 추천 시 정렬 기준은 다음과 같다.
-            3-1. 사용자가 재료를 입력했을 경우, 해당 재료는 많은 순으로 먼저 정렬하고, 우선 순위가 같은 요리에 대해서는 부가적인 재료가 적은 순으로 정렬한다.
-            
-            4. 사용자가 요리를 고르면 레시피와 영상을 알려준다. 이때 레시피는 요약하지말고, 있는 그대로 순서대로 알려줘야한다.
-            4-1. 영상은 context의 `video`에 저장된 링크 주소를 알려준다. `video`에 영상 링크가 없으면 "제공할 수 있는 영상이 없습니다." 이라고 답해야한다.
-            4-2. 영상 링크 임의로 생성하거나 다른 요리의 영상 링크를 절대 알려주지 않는다.
-            
-            `사용자의 질문의 답을 context에서 적절한 요리를 찾지 못하면 필요에 따라 추가 정보를 사용자로부터 더 수집한 뒤 답변하고, 그럼에도 답변할 내용을 context에서 찾을 수 없으면 답변을 생성하지 말고 모른다고 대답해`
-            
-            # context
-            
-    {context}""")),
-            MessagesPlaceholder(variable_name="history", optional=True),
-            ("human", "{question}"),
-        ]
+# 2-1. 기본 질문일 경우
+@chain
+def normal(query):
+    # i. retriever에 쿼리 전달 및 context 저장(format_docs에서 실행)
+    messages = [(("system", dedent(
+        """
+        너는 사용자의 질문(question)에 맞는 요리를 추천해주는 ai야.
+        다음 조건에 맞춰서 답변해.
+        
+        # 조건
+        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답해.
+        
+        2. 사용자의 question 대답을 할 때 요리를 3가지 알려준다.
+        2-1. 요리를 알려줄 때는 요리 이름, 요리 한 줄 소개, 요리 재료, 사진을 알려준다.
+        2-2. 사진은 요리정보의 `img` key에 있다. 반드시 답변하는 요리와 같은 id의 `img` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `img`가 없거나 값이 없으면(빈문자열이면) `사진이 없습니다`라고 답한다.
+        
+        3. 사용자가 요리 이름을 언급하며 레시피를 알려달라고 요청하면, context의 내용을 말로 풀어서 요리 이름, 재료, 레시피, 사진, 영상을 제공한다.
+        3-1. context에 내용이 빠져있다면 그 내용만 대답하지 말고 있는 정보는 대답한다.
+        # context
+        {context}
+        """))), 
+        MessagesPlaceholder(variable_name="history", optional=True),
+        ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
 
-    # retriever 로드 => 추후 함수 선택 코드 넣어야 함
-    rbm25_retr, rfais_retr = load_retriever("ref", "./chat/faiss/ref_faiss") # 냉장고를 부탁해
-    fbm25_retr, ffais_retr = load_retriever("funs", "./chat/faiss/fun_faiss") # 편스토랑
-    mbm25_retr, mfais_retr = load_retriever("man", "./chat/faiss/man_faiss") # 만개의 레시피
+    nchain = {"context": itemgetter("question") | retriever | format_docs, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
+    # ii. llm에 retrieving 결과 + history 전달
+    return nchain
 
-    ensemble1 = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    ensemble2 = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    ensemble3 = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    retriever = MergerRetriever(retrievers=[ensemble1, ensemble2, ensemble3])
+# 2-2. 이전 질문의 파생 질문일 경우
+@chain
+def derived(query):
+    # i. history + 이전 질문 context llm에 전달
+    messages = [(("system", dedent(
+        """
+        너는 사용자의 질문(question)에 맞는 요리를 추천해주는 ai야.
+        다음 조건에 맞춰서 답변해.
+        
+        # 조건
+        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답해.
 
-    def format_docs(docs):
-        # retriever 결과 형태 변환
-        li = []
-        for doc in docs:
-            content = {}
-            content.update(doc.metadata)
-            text = doc.page_content
-            txt = text.split(" ||| ")
-            if len(txt) == 3:
-                content["name"] = txt[0]
-                content["ingrdients"] = txt[1]
-                content["recipe"] = txt[2]
-            elif len(txt) == 6:
-                content["name"] = txt[0]
-                content["ingrdients"] = txt[1]
-                content["recipe"] = txt[2]
-                content["category"] = txt[3]
-                content["info"] = txt[4]
-                content["intro"] = txt[5]
-            li.append(content)
-        return li
+        2. 사용자가 요리를 고르면 해당 요리의 레시피와 영상을 알려준다.
+        2-1. 영상은 요리정보의 `video` key에 있다. 반드시 답변하는 요리와 같은 id의 `video` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `video`가 없거나 값이 없으면(빈문자열이면) 알려주지 않는다.    
+        
+        # context
+        {context}
+        """))),
+        MessagesPlaceholder(variable_name="history", optional=True),
+        ("human", "{question}")]
+    prompt_template = ChatPromptTemplate(messages)
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "context": itemgetter("contexts")} | prompt_template | model | StrOutputParser()
+    return dchain
 
-    # chatting Chain 구성 retriever(관련 문서 조회) -> prompt_template(prompt 생성) model(정답) -> output parser
-    chatting = {"context": itemgetter("question") | retriever | format_docs, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
-
-    chain = RunnableWithMessageHistory(
-        chatting, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
+def mkch():
+    base_chain = RunnableLambda(lambda x: select_chain(x["question"]).invoke({**x, "contexts": contexts if select_chain(x["question"]) == derived else []}))
+    mkchain = RunnableWithMessageHistory(
+        base_chain, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
             ConfigurableFieldSpec(id="user_id", annotation=str, name="User ID", description="사용자 id(Unique)", default="", is_shared=True),
             ConfigurableFieldSpec(id="history_id", annotation=str, name="History ID", description="대화 기록 id(Unique)", default="", is_shared=True),
         ]
     )
-    return chain
+    return mkchain
 
-def save_history(user_id, history_id, messages):
-    """대화 내용 저장 함수 -> 추후 장고 db에 맞춰서 수정해야함"""
-    conn = sqlite3.connect("history.db")
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS chat_history (user_id TEXT, history_id TEXT, messages TEXT)")
-    cursor.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, history_id, str(messages)))
-    conn.commit()
-    conn.close()
+def select_chain(query):
+    """intent 분석 결과에 따라 실행할 체인을 선택"""
+    chk = intent.invoke({"question": query})  # intent 실행
+    if chk == "레시피_영상 요청":
+        return derived
+    return normal
 
-def mkhisid(user_id):
-    """history_id 생성 함수"""
-    while True:
-        history_id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
-        if user_id + history_id not in store.keys():
-            # user_id와 history_id가 없는 경우 종료
-            return history_id
-
-def chat(user_id):
-    history_id = mkhisid(user_id)
-    chain = mkch()
+# 3. llm 응답
+def chat(user_id: int):
+    session_id = mkhisid(user_id)
     while True:
         query = input("메시지 입력 > ")
         if query == "종료":
             break
-        res = chain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
+        res = model.invoke({"question": query, "history": get_session_history(user_id, session_id)})
         print(res)
-
+        save_history(user_id, session_id, query, res)
