@@ -15,6 +15,7 @@ load_dotenv()
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 def load(case):
+    # loader
     if case == "funs":
         conn = sqlite3.connect("./db/funs.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
@@ -50,8 +51,9 @@ def load(case):
         return docs
 
 def load_retriever():
+    """local에서 vector db load하는 함수"""
     def mkretr(case, faiss_path):
-        """ retriever 정의의 함수"""
+        """앙상블할 retriever 정의 함수"""
         docs = load(case)
 
         # vectordb 로드
