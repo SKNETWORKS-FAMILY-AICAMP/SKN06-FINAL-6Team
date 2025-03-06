@@ -17,7 +17,7 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 def load(case):
     # loader
     if case == "funs":
-        conn = sqlite3.connect("./db/funs.db")
+        conn = sqlite3.connect("./chat/db/funs.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
@@ -28,7 +28,7 @@ def load(case):
         return docs
     
     elif case == "ref":
-        conn = sqlite3.connect("./db/fridges.db")
+        conn = sqlite3.connect("./chat/db/fridges.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
@@ -39,7 +39,7 @@ def load(case):
         return docs
     
     else:
-        conn = sqlite3.connect("./db/man.db")
+        conn = sqlite3.connect("./chat/db/man.db")
         df = pd.read_sql("SELECT * FROM recipes", conn)
 
         df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe'] + " ||| " + df['category'] + " ||| " + df['info'] + " ||| " + df['intro']
@@ -68,19 +68,19 @@ def load_retriever(isref=True, isfun=True, isman=True):
     
     def ref():
         """냉장고를 부탁해 retriever 호출 함수"""
-        rbm25_retr, rfais_retr = mkretr("ref", "./faiss/ref_faiss")
+        rbm25_retr, rfais_retr = mkretr("ref", "./chat/faiss/ref_faiss")
         ensemble = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.5, 0.5])
         return ensemble
 
     def fun():
         """편스토랑 retriever 호출 함수"""
-        fbm25_retr, ffais_retr = mkretr("funs", "./faiss/fun_faiss")
+        fbm25_retr, ffais_retr = mkretr("funs", "./chat/faiss/fun_faiss")
         ensemble = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.5, 0.5])
         return ensemble
 
     def man():
         """만개의 레시피 retriever 호출 함수"""
-        mbm25_retr, mfais_retr = mkretr("man", "./faiss/man_faiss")
+        mbm25_retr, mfais_retr = mkretr("man", "./chat/faiss/man_faiss")
         ensemble = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.5, 0.5])
         return ensemble
     

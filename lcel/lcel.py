@@ -1,5 +1,8 @@
 from textwrap import dedent
 from operator import itemgetter
+from pydantic import BaseModel, Field
+from typing_extensions import Literal
+
 from utils.retrievers import load_retriever
 from utils.memories import get_session_history, mkhisid, save_history
 
@@ -13,10 +16,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# llm 모델, retriever 정의
+# llm 모델 정의
 model = ChatOpenAI(model="gpt-4o-mini")
-retriever = load_retriever()
-contexts = [] # 이전 대화 retriever 결과 contexts 저장
+# 이전 대화 retriever 결과 contents 저장 변수
+contents = []
+retriever = load_retriever(False, False, False)
 
 def format_docs(docs):
     """retriever 결과 형태 변환 함수"""
@@ -26,26 +30,28 @@ def format_docs(docs):
         keys = ["name", "ingrdients", "recipe", "category", "info", "intro"][:len(txt)]
         content.update(dict(zip(keys, txt)))
         content.update(doc.metadata)
-        contexts.append(content)
-    return contexts
+        contents.append(content)
+    return contents
 
 
 # 1. llm에 기본 질문/이전 질문의 파생 질문인지 확인하기
 @chain
 def intent(query):
-    intent_messages = [("system", dedent(
-        """
-        너는 사용자의 질문(question)을 분석해서 의도를 파악하고 [`기본 질문`, `레시피_영상 요청`] 둘 중에 하나로 return하는 ai야.
-        `레시피_영상 요청`은 사용자가 이전에 네가 답변한 답변에서 추가 질문을 하는건데 메뉴 이름만 언급할 수도 있고, 번호만 말할 수도 있어.
-        메뉴 이름을 언급한 경우에는 history에 그 요리 이름이 있으면 그 메뉴에 대한 `레시피_영상 요청`이고, 없으면 기본 질문으로 판단해.
-        단, "'요리 이름' 레시피 알려줘"처럼 요리 이름과 레시피 알려달라는 말을 같이하면 기본 질문이야.
-        이외 답변은 기본 질문으로 분류해. 답변은 [`기본 질문`, `레시피_영상 요청`] 중에 하나로만 답해. '-입니다'도 붙이지 말고 네가 분류한 결과가 무엇인지만 대답해.
-        """)),
-        MessagesPlaceholder(variable_name="history", optional=True),
-        ("human", "{question}")]
-    intent_prompt = ChatPromptTemplate(messages=intent_messages)
+    class Flag(BaseModel):
+        flag: Literal["new", "continue"] = Field(None, description="사용자 query가 이전 query와 이어지는 것인지 새로운 query인지에 대한 구분값. 이전에 한 query와 이어지는 경우 'continue'를 새로운 query일 경우 'new'를 저장한다.")
+        
+    # Augment the LLM with schema for structured output
+    intent_result = model.with_structured_output(Flag)
 
-    chk_intent_chain = intent_prompt | model | StrOutputParser()
+    messages = [
+        ("system", "당신은 질문을 구분하는 AI입니다. 질문이 이전에 한 질문과 이어지는 질문인지 새로운 질문인지를 구분해 주세요."),
+        # MessagesPlaceholder(variable_name="history", optional=True),
+        ("human", "{query}")
+    ]
+
+    intent_prompt = ChatPromptTemplate(messages)
+
+    chk_intent_chain = intent_prompt | intent_result
     return chk_intent_chain
 
 # 2-1. 기본 질문일 경우
@@ -58,14 +64,17 @@ def normal(query):
         다음 조건에 맞춰서 답변해.
         
         # 조건
-        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답해.
+        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답한다.
         
         2. 사용자의 question 대답을 할 때 요리를 3가지 알려준다.
         2-1. 요리를 알려줄 때는 요리 이름, 요리 한 줄 소개, 요리 재료, 사진을 알려준다.
-        2-2. 사진은 요리정보의 `img` key에 있다. 반드시 답변하는 요리와 같은 id의 `img` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `img`가 없거나 값이 없으면(빈문자열이면) `사진이 없습니다`라고 답한다.
+        2-2. 사용자가 요리에 포함되어야하는 재료를 여러 개 입력했을 경우, 사용자가 언급한 재료가 많이 있는 순으로 먼저 정렬하고, 우선 순위가 같은 요리에 대해서는 부가적인 재료가 적은 순으로 정렬한 후 추천한다.
+        2-3. 사용자가 포함하지 말아야할 재료나 도구 등을 언급하면 그것은 포함하지 않는 요리만 추천한다.
+        2-3. 사진은 요리정보의 `img` key에 있다. 반드시 답변하는 요리와 같은 id의 `img` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `img`가 없거나 값이 없으면(빈문자열이면) `사진이 없습니다`라고 답한다.
         
-        3. 사용자가 요리 이름을 언급하며 레시피를 알려달라고 요청하면, context의 내용을 말로 풀어서 요리 이름, 재료, 레시피, 사진, 영상을 제공한다.
-        3-1. context에 내용이 빠져있다면 그 내용만 대답하지 말고 있는 정보는 대답한다.
+        3. 사용자가 요리 이름을 언급하며 레시피를 알려달라고 요청하면, context의 내용을 말로 풀어서 한 가지 요리 정보만 전달한다.
+        3-1. 요리 이름, 재료, 레시피, 사진, 영상을 제공한다.
+        3-2. context에 내용이 빠져있다면 그 내용만 대답하지 않는다. 내용이 있는 정보는 대답한다.
         # context
         {context}
         """))), 
@@ -87,22 +96,24 @@ def derived(query):
         다음 조건에 맞춰서 답변해.
         
         # 조건
-        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답해.
+        1. content와 context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답해.
 
-        2. 사용자가 요리를 고르면 해당 요리의 레시피와 영상을 알려준다.
+        2. 사용자가 이전에 추천해준 요리 목록에서 요리를 고르면 해당 요리의 레시피와 영상을 알려준다.
         2-1. 영상은 요리정보의 `video` key에 있다. 반드시 답변하는 요리와 같은 id의 `video` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `video`가 없거나 값이 없으면(빈문자열이면) 알려주지 않는다.    
         
+        # content
+        {content}
         # context
         {context}
         """))),
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
-    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "context": itemgetter("contexts")} | prompt_template | model | StrOutputParser()
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("contents"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model | StrOutputParser()
     return dchain
 
 def mkch():
-    base_chain = RunnableLambda(lambda x: select_chain(x["question"]).invoke({**x, "contexts": contexts if select_chain(x["question"]) == derived else []}))
+    base_chain = RunnableLambda(lambda x: select_chain(x["question"]).invoke({**x, "content": contents if select_chain(x["question"]) == derived else []}))
     mkchain = RunnableWithMessageHistory(
         base_chain, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
@@ -114,8 +125,8 @@ def mkch():
 
 def select_chain(query):
     """intent 분석 결과에 따라 실행할 체인을 선택"""
-    chk = intent.invoke({"question": query})  # intent 실행
-    if chk == "레시피_영상 요청":
+    chk = intent.invoke({"query": query})  # intent 실행
+    if chk == "continue":
         return derived
     return normal
 
@@ -129,6 +140,3 @@ def chat(user_id):
             break
         res = cchain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
         print(res)
-        save_history(user_id, history_id, {query:res}) # 장고 맞춰서 수정 필요
-
-chat("suy")

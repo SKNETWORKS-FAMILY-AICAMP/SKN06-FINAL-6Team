@@ -48,16 +48,6 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
             messages = [summary] + recent_messages  # 요약 + 최신 메시지 합침
         store[(user_id, history_id)] = InMemoryHistory(messages=messages)
     return store[(user_id, history_id)]
-    
-    
-def save_history(user_id, history_id, messages):
-    """대화 내용 저장 함수 -> 추후 장고 db에 맞춰서 수정해야함"""
-    conn = sqlite3.connect("history.db")
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS chat_history (user_id TEXT, history_id TEXT, messages TEXT)")
-    cursor.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, history_id, str(messages)))
-    conn.commit()
-    conn.close()
 
 def mkhisid(user_id):
     """history_id 생성 함수"""
