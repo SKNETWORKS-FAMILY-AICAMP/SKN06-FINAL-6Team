@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -57,7 +58,10 @@ ROOT_URLCONF = 'cook.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [os.path.join(BASE_DIR, 'cook', 'templates'), 
+                os.path.join(BASE_DIR, 'account', 'templates'), 
+                os.path.join(BASE_DIR, 'chat', 'templates')],
+        'APP_DIRS': True,
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -118,9 +122,42 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "cook", "static")]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 로그인 후 이동할 기본 페이지
+LOGIN_REDIRECT_URL = '/chat/'
+LOGOUT_REDIRECT_URL = '/account/login/'
+
+# 로그인 페이지 URL
+LOGIN_URL = '/account/login/'
+
+# 커스텀 유저 모델 설정
+AUTH_USER_MODEL = 'account.Users'
+
+#카카오톡 RestAPI키
+KAKAO_REST_API_KEY = 'cef73be738ef09d08640bcdfa716d4dc'
+
+# 미디어 파일 설정 추가
+MEDIA_URL = '/media/' 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# 이메일 설정 (Gmail 예시)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = 'cookitcookeat@gmail.com'  # 발신자 이메일
+EMAIL_HOST_PASSWORD = 'jdceaodzlqughsgm'  # 앱 비밀번호 사용
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"  # 기본 설정
+SESSION_COOKIE_AGE = 5000
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
