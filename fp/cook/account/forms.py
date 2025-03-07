@@ -2,17 +2,45 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import Users
 
-class CustomUserCreationForm(UserCreationForm):
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+class CustomUserCreationForm(forms.ModelForm):
+    """회원가입 폼 (Users 모델 기반)"""
+    login_id = forms.CharField(max_length=50, required=True, label="로그인 ID")
+    email = forms.EmailField(required=True, label="이메일")
     name = forms.CharField(max_length=50, required=True, label="이름")
     nickname = forms.CharField(max_length=30, required=True, label="별명")
     birthday = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={'type': 'date'}))
     user_photo = forms.ImageField(required=False, label="프로필 사진")
 
+    # ✅ Users 모델에는 없지만, 폼에서만 사용할 필드
+    password1 = forms.CharField(
+        label="비밀번호",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 입력"}),
+        required=True
+    )
+    password2 = forms.CharField(
+        label="비밀번호 확인",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 확인"}),
+        required=True
+    )
+
     class Meta:
         model = Users
-        fields = ("login_id", "email", "name", "nickname", "birthday", "password1", "password2", "user_photo")
+        fields = ("login_id", "email", "name", "nickname", "birthday", "user_photo")  # ✅ `password1`, `password2` 제거
 
     def clean(self):
+        """비밀번호 확인 로직 추가"""
         cleaned_data = super().clean()
         password1 = cleaned_data.get("password1")
         password2 = cleaned_data.get("password2")
@@ -21,6 +49,14 @@ class CustomUserCreationForm(UserCreationForm):
             raise forms.ValidationError("비밀번호가 일치하지 않습니다.")
 
         return cleaned_data
+
+    def save(self, commit=True):
+        """비밀번호를 해싱하여 저장"""
+        user = super().save(commit=False)
+        user.password = make_password(self.cleaned_data["password1"])  # ✅ 비밀번호 해싱 후 저장
+        if commit:
+            user.save()
+        return user
 
 # 아이디 찾기 폼
 class FindIDForm(forms.Form):
@@ -57,7 +93,6 @@ class EmailVerificationForm(forms.Form):
         widget=forms.TextInput(attrs={"placeholder": "인증번호 입력"})
     )
 
-    from django import forms
 
 # 비밀번호 재설정 폼
 class PasswordResetForm(forms.Form):

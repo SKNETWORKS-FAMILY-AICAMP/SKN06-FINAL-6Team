@@ -24,10 +24,10 @@ def signup(request):
             user.points = 200  # 기본 포인트 지급
             user.save()
             login(request, user)
-            return redirect('profile')
+            return redirect('login')
     else:
         form = CustomUserCreationForm()
-    return render(request, 'account/signup.html', {'form': form})
+    return render(request, 'signup.html', {'form': form})
 
 # 로그인
 def login_view(request):
@@ -36,10 +36,10 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('chat')
+        return redirect('chat')
     else:
         form = AuthenticationForm()
-    return render(request, 'account/login.html', {'form': form})
+    return render(request, 'login.html', {'form': form})
 
 # 로그아웃
 def logout_view(request):
@@ -49,7 +49,7 @@ def logout_view(request):
 # 프로필 페이지
 @login_required
 def profile(request):
-    return render(request, 'account/mypage.html')
+    return render(request, 'mypage.html')
 
 # 카카오 API 설정 (REST API 키 & Redirect URI)
 REST_API_KEY = "cef73be738ef09d08640bcdfa716d4dc"  
@@ -86,7 +86,7 @@ def kakao_callback(request):
     birthyear = user_info["kakao_account"].get("birthyear")
     birthday = user_info["kakao_account"].get("birthday")  # MMDD 형식
     birthday = f"{birthyear}-{birthday[:2]}-{birthday[2:]}" if birthyear and birthday else None
-    profile_image = user_info["kakao_account"]["profile"].get("profile_image_url", None)  # 프로필 사진
+    # profile_image = user_info["kakao_account"]["profile"].get("profile_image_url", None)  # 프로필 사진
 
     # Users 모델과 연동
     user, created = Users.objects.get_or_create(
@@ -98,11 +98,15 @@ def kakao_callback(request):
             "name": name,
             "nickname": nickname,
             "birthday": birthday,
-            "user_photo": profile_image,
-            "points": 200 if created else user.points,  # 신규 가입자에게 200 포인트 지급
-            "status": "active"
+            # "user_photo": profile_image,
+            # "points": 200 if created else user.points,  # 신규 가입자에게 200 포인트 지급
+            # "status": "active"
         }
     )
+    # 처음 가입한 유저라면 200 쿠키 지급
+    if created:
+        user.point = 200  # 첫 카카오 로그인 시 200 쿠키 지급
+        user.save()
 
     # Django 로그인 처리
     login(request, user)
@@ -113,7 +117,7 @@ def kakao_callback(request):
     request.session["kakao_nickname"] = nickname
     request.session["kakao_email"] = email
     request.session["kakao_birthday"] = birthday
-    request.session["kakao_profile_image"] = profile_image
+    # request.session["kakao_profile_image"] = profile_image
     request.session["kakao_access_token"] = access_token
 
     return redirect("chat")  # 로그인 후 chat 화면으로 이동
@@ -164,13 +168,13 @@ def find_id(request):
 
             try:
                 user = Users.objects.get(name=name, email=email)
-                return render(request, "account/find_id.html", {"login_id": user.login_id})
+                return render(request, "find_id.html", {"login_id": user.login_id})
             except Users.DoesNotExist:
                 messages.error(request, "입력한 정보와 일치하는 아이디가 없습니다.")
     else:
         form = FindIDForm()
 
-    return render(request, "account/find_id.html", {"form": form})
+    return render(request, "find_id.html", {"form": form})
 
 # 비밀번호 찾기
 def find_pw(request):
@@ -190,7 +194,7 @@ def find_pw(request):
     else:
         form = FindPWForm()
 
-    return render(request, "account/find_pw.html", {"form": form})
+    return render(request, "find_pw.html", {"form": form})
 
 # 인증번호 전송
 def send_otp_email(request):
@@ -221,7 +225,7 @@ def send_otp_email(request):
             fail_silently=False,
         )
 
-        return render(request, "account/send_email_code.html", {"email": email})
+        return render(request, "send_email_code.html", {"email": email})
     else:
         return redirect("find_pw")
 
@@ -255,7 +259,7 @@ def verify_otp(request):
     else:
         form = EmailVerificationForm()
 
-    return render(request, "account/verify_email_code.html", {"form": form})
+    return render(request, "verify_email_code.html", {"form": form})
 
 # 비밀번호 재설정
 def reset_password(request):
@@ -293,7 +297,7 @@ def reset_password(request):
     else:
         form = PasswordResetForm()
 
-    return render(request, "account/reset_password.html", {"form": form})
+    return render(request, "reset_password.html", {"form": form})
 
 # 마이페이지 (사용자 정보 수정)
 @login_required
@@ -306,7 +310,7 @@ def mypage(request):
             return redirect('mypage')
     else:
         form = UserUpdateForm(instance=request.user)
-    return render(request, 'account/mypage.html', {'form': form})
+    return render(request, 'mypage.html', {'form': form})
 
 # 회원탈퇴
 @login_required

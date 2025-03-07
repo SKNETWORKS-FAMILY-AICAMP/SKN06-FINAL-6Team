@@ -1,7 +1,9 @@
 from django.db import models
+from django.utils.timezone import now
+from django.contrib.auth.models import AbstractUser
 
 ### 1. Users 테이블 (사용자 정보)
-class Users(models.Model):
+class Users(AbstractUser):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('deactivated', 'Deactivated'),
@@ -29,7 +31,13 @@ class Users(models.Model):
     verification_expires_at = models.DateTimeField(null=True, blank=True)  # 인증번호 만료 시간 (NULL 가능)
     created_at = models.DateTimeField(auto_now_add=True)  # 계정 생성 시간
     updated_at = models.DateTimeField(auto_now=True)  # 계정 정보 수정 시간
+    last_login = models.DateTimeField(default=now, null=True, blank=True)
+    
+    USERNAME_FIELD = "login_id"
+    REQUIRED_FIELDS = ["email", "password", "nickname", "birthday", "name"]
 
+    username=None
+    
     def __str__(self):
         return self.nickname
 

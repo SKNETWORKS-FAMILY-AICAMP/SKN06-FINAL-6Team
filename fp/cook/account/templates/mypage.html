@@ -1,0 +1,287 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>MY Page</title>
+    <style>
+        /* 페이지 스타일 */
+        body {
+            font-family: Arial, sans-serif;
+            width: 600px;
+            margin: 100px auto;
+            padding: 20px 40px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 로고 스타일 */
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+        }
+
+        .logo img {
+            width: 80px;  
+            height: auto;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        /* 제목 스타일 */
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* 프로필 사진 및 이름, 포인트 영역 */
+        .profile-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .profile {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            overflow: hidden;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .profile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .profile:hover::after {
+            content: "이미지 변경";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            padding: 4px 0;
+            border-radius: 0 0 50% 50%;
+            pointer-events: none;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 이름 및 탈퇴 버튼 */
+        .profile-info .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn-delete {
+            display: inline-block;
+            padding: 5px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #f44336;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-delete:hover {
+            background-color: #d32f2f;
+        }
+
+        /* 포인트 표시 */
+        .point-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        /* 폼 스타일 */
+        form {
+            width: 100%;
+        }
+
+        .form-group-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            width: 48%;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        /* 수정 불가한 항목 (칸 제거, 텍스트만 표시) */
+        .no-input {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* 수정 가능한 항목 (별명, 비밀번호) */
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+
+        /* 이메일 및 저장 버튼 */
+
+        .form-email-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+
+
+        .form-email-row .no-input {
+            padding: 8px 0;
+        }
+
+        .btn-save {
+            padding: 7px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            height: 30px;
+            margin-left: auto;
+        }
+
+        .btn-save:hover {
+            background-color: #45a049;
+        }
+
+        #id_profile_picture {
+            display: none;
+        }
+    </style>
+
+    <script>
+        function triggerFileInput() {
+            document.getElementById('id_profile_picture').click();
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-image').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+    </script>
+
+</head>
+
+<body>
+
+    <!-- 로고 추가 -->
+    <div class="logo">
+        <a href="{% url 'home' %}">
+            <img src="{% static 'imgs/logo.png' %}" alt="로고">
+        </a>
+    </div>
+
+    <!-- 페이지 제목 -->
+    <h1>MY Page</h1>
+
+    <div class="profile-container">
+        <div class="profile" onclick="triggerFileInput()">
+            {% if user.user_photo %}
+                <img id="profile-image" src="{{ user.user_photo.url }}" alt="프로필 사진">
+            {% else %}
+                <img id="profile-image" src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진">
+            {% endif %}
+        </div>
+
+        <div class="profile-info">
+            <div class="user-info">
+                <span>{{ user.name }}</span>
+                <a href="{% url 'delete_account' %}" class="btn-delete" onclick="return confirm('정말 탈퇴하시겠습니까?');">탈퇴</a>
+            </div>
+
+            <div class="point-container">
+                <span>{{ user.points }}</span>
+                <span style="font-size: 12px; color: #555;">쿠키</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사용자 정보 수정 폼 -->
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <input type="file" name="profile_picture" id="id_profile_picture" accept="image/*" onchange="previewImage(event)">
+
+        <div class="form-group-row">
+            <div class="form-group">
+                <label>아이디</label>
+                <div class="no-input">{{ user.username }}</div>
+            </div>
+
+            <div class="form-group">
+                <label>생년월일</label>
+                <div class="no-input">{{ user.birthdate|date:'Y-m-d' }}</div>
+            </div>
+        </div>
+
+        <div class="form-group-row">
+            <div class="form-group">
+                <label for="id_nickname">별명</label>
+                <input type="text" name="nickname" id="id_nickname" value="{{ user.nickname }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="id_password">비밀번호</label>
+                <input type="password" name="password" id="id_password" placeholder="비밀번호 변경 시 입력">
+            </div>
+        </div>
+
+        <div class="form-email-row">
+            <div class="form-group">
+                <label>이메일</label>
+                <div class="no-input">{{ user.email }}</div>
+            </div>
+            <button type="submit" class="btn-save">저장하기</button>
+        </div>
+    </form>
+
+</body>
+</html>
+
