@@ -13,8 +13,10 @@ chat
 │   ├── fun_faiss
 │   ├── man_faiss
 │   └── ref_faiss
+├── lcel
+│   └── lcel.py
 ├── utils
 │   ├── memories.py
 │   └── retrievers.py
-└── llm.py
+└── chat.py
 ```

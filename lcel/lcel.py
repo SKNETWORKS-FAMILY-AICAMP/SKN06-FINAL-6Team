@@ -113,7 +113,7 @@ def derived(query):
     return dchain
 
 def mkch():
-    base_chain = RunnableLambda(lambda x: select_chain(x["question"]).invoke({**x, "content": contents if select_chain(x["question"]) == derived else []}))
+    base_chain = RunnableLambda(lambda x: (lambda chain: chain.invoke({**x, "content": contents if chain == derived else []}))(select_chain(x)))
     mkchain = RunnableWithMessageHistory(
         base_chain, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
@@ -123,20 +123,10 @@ def mkch():
     )
     return mkchain
 
-def select_chain(query):
+def select_chain(x):
     """intent 분석 결과에 따라 실행할 체인을 선택"""
-    chk = intent.invoke({"query": query})  # intent 실행
+    history = x['history'][:-3]
+    chk = intent.invoke({"query": x["question"], "history": history})
     if chk == "continue":
         return derived
     return normal
-
-# 3. llm 응답
-def chat(user_id):
-    history_id = mkhisid(user_id)
-    cchain = mkch()
-    while True:
-        query = input("메시지 입력 > ")
-        if query == "종료":
-            break
-        res = cchain.invoke({"question": query}, config={"configurable": {"user_id": user_id, "history_id": history_id}})
-        print(res)
