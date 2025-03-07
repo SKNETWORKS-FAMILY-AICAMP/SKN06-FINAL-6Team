@@ -3,8 +3,8 @@ from operator import itemgetter
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
-from utils.retrievers import load_retriever
-from utils.memories import get_session_history, mkhisid, save_history
+from chat.utils.retrievers import load_retriever
+from chat.utils.memories import get_session_history
 
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
@@ -18,9 +18,9 @@ load_dotenv()
 
 # llm 모델 정의
 model = ChatOpenAI(model="gpt-4o-mini")
+retriever = load_retriever(False, False, False)
 # 이전 대화 retriever 결과 contents 저장 변수
 contents = []
-retriever = load_retriever(False, False, False)
 
 def format_docs(docs):
     """retriever 결과 형태 변환 함수"""
@@ -44,8 +44,11 @@ def intent(query):
     intent_result = model.with_structured_output(Flag)
 
     messages = [
-        ("system", "당신은 질문을 구분하는 AI입니다. 질문이 이전에 한 질문과 이어지는 질문인지 새로운 질문인지를 구분해 주세요."),
-        # MessagesPlaceholder(variable_name="history", optional=True),
+        ("system", dedent("""너는 사용자의 질문(query)을 분석해서 의도를 파악하고 [`new`, `continue`] 둘 중에 하나로 return하는 ai야.
+        `continue`은 사용자가 이전에 네가 답변한 답변에서 추가 질문을 하는건데 메뉴 이름만 언급할 수도 있고, 번호만 말할 수도 있어.
+        메뉴 이름을 언급한 경우에는 history에 그 요리 이름이 있으면 그 메뉴에 대한 `continue`이고, 없으면 기본 질문으로 판단해.
+        단, "'요리 이름' 레시피 알려줘"처럼 요리 이름과 레시피 알려달라는 말을 같이하면 기본 질문이야. 이외 답변은 기본 질문으로 분류해.""")),
+        MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{query}")
     ]
 
@@ -109,7 +112,7 @@ def derived(query):
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
-    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("contents"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model | StrOutputParser()
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model | StrOutputParser()
     return dchain
 
 def mkch():
