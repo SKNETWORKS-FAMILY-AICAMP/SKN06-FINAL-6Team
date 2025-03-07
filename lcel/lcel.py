@@ -127,6 +127,6 @@ def select_chain(x):
     """intent 분석 결과에 따라 실행할 체인을 선택"""
     history = x['history'][:-3]
     chk = intent.invoke({"query": x["question"], "history": history})
-    if chk == "continue":
+    if chk.flag == "continue":
         return derived
     return normal
