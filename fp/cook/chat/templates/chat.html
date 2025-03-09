@@ -6,33 +6,44 @@
     <title>채팅</title>
     {% load static %}
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+                }
+
         body {
             display: flex;
-            font-family: Arial, sans-serif;
-            position: relative;
+            height: 100vh; /* 전체 높이 맞추기 */
         }
+
         #sidebar {
-            width: 250px;
-            padding: 15px;
+            width: 20%;
+            height: 100vh; /* 전체 높이 맞추기 */
             background-color: #f4f4f4;
+            overflow-y: auto; 
         }
         #chat-container {
             flex-grow: 1;
+            height: 100vh; /* 전체 높이 맞추기 */
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            padding: 15px;
         }
         #chat-box {
             flex-grow: 1;
-            border: 1px solid #ccc;
-            padding: 10px;
-            height: 300px;
             overflow-y: auto;
+            padding: 15px;
+            height: calc(100vh - 120px); /* 입력창 높이를 뺀 나머지를 차지 */
         }
+
         #input-box {
             display: flex;
-            gap: 10px;
+            padding: 10px;
+            background: white;
+            position: relative;
+            bottom: 0;
+            width: 100%;
         }
         #message-input {
             flex-grow: 1;
@@ -40,7 +51,7 @@
         }
         .btn {
             padding: 5px 10px;
-            background-color: blue;
+            background-color: rgba(0, 0, 255, 0.519);
             color: white;
             border: none;
             cursor: pointer;
@@ -122,13 +133,13 @@
             padding: 10px 20px;
             text-decoration: none;
             color: white;
-            background-color: #007bff;
+            background-color: rgba(0, 0, 255, 0.519);
             border-radius: 5px;
             transition: background-color 0.3s;
         }
 
         .btn.login-btn:hover {
-            background-color: #0056b3;
+            background-color: rgba(0, 0, 255, 0.519)
         }
 
         /* 모달창 스타일 */
@@ -171,7 +182,6 @@
             cursor: pointer;
             align-self: center;
         }
-
         .message {
             max-width: 70%;
             padding: 10px 15px;
@@ -180,26 +190,25 @@
             word-wrap: break-word;
             display: inline-block;
             clear: both;
-            position: relative;
-            display: block;
             font-size: 16px;
         }
 
         .user-message {
-            background-color: #007bff;
+            background-color: rgba(0, 0, 255, 0.519);
             color: white;
             align-self: flex-end;
-            border-bottom-right-radius: 0;
             text-align: right;
             float: right;
+            border-bottom-right-radius: 0;
         }
-        
+
         .bot-message {
             background-color: #f1f1f1;
             color: black;
             align-self: flex-start;
-            border-bottom-left-radius: 0;
+            text-align: left;
             float: left;
+            border-bottom-left-radius: 0;
         }
 
         .user-message::after {
@@ -228,13 +237,10 @@
             transform: translateY(-50%);
         }
 
-        /* 채팅박스 내 요소 정렬 */
         #chat-box {
             display: flex;
             flex-direction: column;
             gap: 5px;
-            padding: 10px;
-            border: 1px solid #ccc;
             height: 300px;
             overflow-y: auto;
         }
@@ -295,7 +301,7 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times</span>
             <h2>🍪 쿠키 안내</h2>
-            <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
+            <p>현재 보유 중인 쿠키: <strong>{{ request.user.points|default:'0' }}개</strong></p>
             <ul>
                 <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
                 <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
@@ -344,7 +350,7 @@
                     return;
                 }
 
-                // 🔹 입력값 즉시 삭제
+                // 입력값 즉시 삭제
                 input.value = "";
 
                 // 사용자 메시지 UI 추가
@@ -357,7 +363,10 @@
                         "Content-Type": "application/json",
                         "X-CSRFToken": "{{ csrf_token }}"
                     },
-                    body: JSON.stringify({ "message": message })
+                    body: JSON.stringify({
+                        "message": message,
+                        "session_id": currentSessionId  // ✅ 기존 채팅 세션 유지
+                    })
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -368,7 +377,7 @@
                 .then(data => {
                     if (data && data.response) {
                         chatBox.innerHTML += `<div class="message bot-message"><strong></strong> ${data.response}</div>`;
-                        chatBox.scrollTop = chatBox.scrollHeight;
+                        scrollToBottom();
 
                         // 🔹 AI 응답을 받은 후, 추가 질문을 시도하면 차단됨
                         if (!{{ request.user.is_authenticated|lower }}) {
@@ -398,7 +407,7 @@
     <script>
         async function startNewChat() {
             try {
-                let response = await fetch("/api/chat/new/", {
+                let response = await fetch("./api/chat/new/", {
                     method: "POST",
                     headers: { "X-CSRFToken": "{{ csrf_token }}" }
                 });
@@ -416,23 +425,27 @@
             }
         }
 
+        let currentSessionId = null;
+
         async function loadChatSessions() {
             try {
-                let response = await fetch("/api/chat/sessions/");
+                let response = await fetch("./api/chat/sessions/");
                 let data = await response.json();
                 let sessionList = document.getElementById("sessionList");
                 sessionList.innerHTML = "";
 
-                if (data.sessions.length === 0) {
+                if (!data.sessions || data.sessions.length === 0) {
                     sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
                     return;
                 }
 
                 data.sessions.forEach(session => {
                     let li = document.createElement("li");
-                    li.innerHTML = `<span onclick="loadChatHistory(${session.session_id})">${session.created_at}</span>`;
+                    
+                    li.innerHTML = `<span onclick="loadChatHistory('${session.session_id}')">${session.summary}</span>`;
                     sessionList.appendChild(li);
                 });
+
             } catch (error) {
                 console.error("채팅 목록 불러오기 실패:", error);
             }
@@ -440,52 +453,68 @@
 
         async function loadChatHistory(sessionId) {
             try {
-                let response = await fetch(`/api/chat/history/${sessionId}/`);
+                let response = await fetch(`./api/chat/history/${sessionId}/`);
                 let data = await response.json();
                 let chatBox = document.getElementById("chat-box");
                 chatBox.innerHTML = "";
 
-                if (data.messages.length === 0) {
+                if (!data.messages || data.messages.length === 0) {
                     chatBox.innerHTML = "<p>이전 대화가 없습니다.</p>";
                     return;
                 }
 
+                // 현재 세션 ID 설정
+                currentSessionId = sessionId;
+
                 data.messages.forEach(msg => {
-                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
                     let messageDiv = document.createElement("div");
+                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
                     messageDiv.classList.add("message", className);
-                    messageDiv.innerHTML = `<strong>${msg.sender}:</strong> ${msg.content}`;
+
+                    // ✅ AI는 왼쪽 정렬, User는 오른쪽 정렬
+                    messageDiv.style.alignSelf = msg.sender === "AI" ? "flex-start" : "flex-end";
+            
+                    messageDiv.innerHTML = msg.content;
                     chatBox.appendChild(messageDiv);
                 });
+
+                scrollToBottom();
             } catch (error) {
                 console.error("채팅 내역 불러오기 실패:", error);
             }
         }
-        
+        function scrollToBottom() {
+            let chatBox = document.getElementById("chat-box");
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
         async function deleteChat(sessionId) {
             if (!confirm("정말 삭제하시겠습니까?")) return;
 
-            let response = await fetch(`/chat/api/chat/delete/${sessionId}/`, {  // ✅ 수정된 API 경로
-                method: "DELETE",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" }
-            });
+            try {
+                let response = await fetch(`./api/chat/delete/${sessionId}/`, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" }
+                });
 
-            let data = await response.json();
-            if (data.success) {
-                alert("채팅이 삭제되었습니다.");
-                loadChatSessions();
-            } else {
-                alert("삭제 실패: " + data.error);
+                let data = await response.json();
+                if (data.success) {
+                    alert("채팅이 삭제되었습니다.");
+                    currentSessionId = null;  // 삭제 후 현재 세션 초기화
+                    loadChatSessions();
+                } else {
+                    alert("삭제 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("채팅 삭제 실패:", error);
             }
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             loadChatSessions();
         });
-    </script>
 
-    <script>
-        document.getElementById('mic-button').addEventListener('click', startSpeechRecognition); /* 🔹 추가됨 */
+        document.getElementById('mic-button').addEventListener('click', startSpeechRecognition);
 
         function startSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -517,7 +546,8 @@
 
             recognition.start();
         }
+
     </script>
-    
+
 </body>
 </html>

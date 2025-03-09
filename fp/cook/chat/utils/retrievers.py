@@ -8,7 +8,6 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever, MergerRetriever
 
-from chat.models import ChatSession, Chats
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,19 +15,8 @@ load_dotenv()
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 def load(case):
-    if case == "chat_history":  # 기존 대화 내용을 기반으로 검색하는 옵션 추가
-        sessions = ChatSession.objects.all()
-        data = []
-        for session in sessions:
-            chats = Chats.objects.filter(session=session).order_by('created_at')
-            content = " ||| ".join([f"{chat.question_content} : {chat.response_content}" for chat in chats])
-            data.append({"page_content": content})
-        df = pd.DataFrame(data)
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
-        return docs
-    
-    elif case == "funs":
+    # loader
+    if case == "funs":
         conn = sqlite3.connect("./chat/db/funs.db")
         df = pd.read_sql("SELECT * FROM menu", conn)
 
@@ -62,9 +50,10 @@ def load(case):
         docs = loader.load_and_split(splitter)
         return docs
 
-def load_retriever():
+def load_retriever(isref=True, isfun=True, isman=True):
+    """local에서 vector db load하는 함수"""
     def mkretr(case, faiss_path):
-        """ retriever 정의의 함수"""
+        """앙상블할 retriever 정의 함수"""
         docs = load(case)
 
         # vectordb 로드
@@ -73,17 +62,46 @@ def load_retriever():
         # BM25 retriever, FAISS retriever 앙상블
         bm25_retr = BM25Retriever.from_documents(docs)
         bm25_retr.k = 3
-        fais_retr = fais.as_retriever(search_kwargs={"k": 3})
+        fais_retr = fais.as_retriever(search_type="mmr", search_kwargs={"k": 3})
         
         return bm25_retr, fais_retr
+    
+    def ref():
+        """냉장고를 부탁해 retriever 호출 함수"""
+        rbm25_retr, rfais_retr = mkretr("ref", "./chat/faiss/ref_faiss")
+        ensemble = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.5, 0.5])
+        return ensemble
 
-    # retriever 로드 => 추후 함수 선택 코드 넣어야 함
-    rbm25_retr, rfais_retr = mkretr("ref", "./chat/faiss/ref_faiss") # 냉장고를 부탁해
-    fbm25_retr, ffais_retr = mkretr("funs", "./chat/faiss/fun_faiss") # 편스토랑
-    mbm25_retr, mfais_retr = mkretr("man", "./chat/faiss/man_faiss") # 만개의 레시피
+    def fun():
+        """편스토랑 retriever 호출 함수"""
+        fbm25_retr, ffais_retr = mkretr("funs", "./chat/faiss/fun_faiss")
+        ensemble = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.5, 0.5])
+        return ensemble
 
-    ensemble1 = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    ensemble2 = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    ensemble3 = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.25, 0.25, 0.25, 0.25],) # weight: retriever 별 가중치 조절 가능
-    retriever = MergerRetriever(retrievers=[ensemble1, ensemble2, ensemble3])
-    return retriever
+    def man():
+        """만개의 레시피 retriever 호출 함수"""
+        mbm25_retr, mfais_retr = mkretr("man", "./chat/faiss/man_faiss")
+        ensemble = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.5, 0.5])
+        return ensemble
+    
+    retrievers = []
+    if isref:
+        ensemble = ref()
+        retrievers.append(ensemble)
+    if isfun:
+        ensemble = fun()
+        retrievers.append(ensemble)
+    if isman:
+        ensemble = man()
+        retrievers.append(ensemble)
+
+    if len(retrievers) == 1:
+        # 선택한 것이 한 개인 경우 -> 한 개 리트리버만 반환
+        return retrievers[0]
+    
+    else:
+        # 선택한 것이 여러 개인 경우 -> 선택한 개수만큼 리트리버 반환
+        if not retrievers:
+            retrievers = [ref(), fun(), man()]
+        retriever = MergerRetriever(retrievers=retrievers)
+        return retriever

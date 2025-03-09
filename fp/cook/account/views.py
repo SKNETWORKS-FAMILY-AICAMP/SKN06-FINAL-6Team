@@ -24,7 +24,9 @@ def signup(request):
             user.points = 200  # 기본 포인트 지급
             user.save()
             login(request, user)
-            return redirect('login')
+            return redirect('profile')
+        else:
+            print(form.errors)
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})

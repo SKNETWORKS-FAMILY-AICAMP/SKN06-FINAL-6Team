@@ -1,9 +1,10 @@
 from django.db import models
 from account.models import Users  # 사용자 테이블 참조
+import uuid
 
 ### 1. ChatSession 테이블 (사용자의 대화 흐름을 그룹화)
 class ChatSession(models.Model):
-    session_id = models.AutoField(primary_key=True)
+    session_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -8,9 +8,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 
-from django.db import transaction
-from chat.models import ChatSession, Chats, HistoryChat
-
 model = ChatOpenAI(model="gpt-4o-mini")
 
 store = {}
@@ -26,41 +23,36 @@ class InMemoryHistory(BaseChatMessageHistory, BaseModel):
     def clear(self) -> None:
         self.messages = []
 
-def get_session_history(user_id: int, session_id: int):
-    """
-    Django ORM을 사용하여 대화 내용을 불러옴.
-    최신 10개는 원문 그대로 가져오고, 그 이전 대화는 요약.
-    """
-    try:
-        session = ChatSession.objects.get(session_id=session_id, user_id=user_id)
-        chats = Chats.objects.filter(session=session).order_by('-created_at')
-        messages = list(chats.values_list('question_content', 'response_content'))
-        
-        if len(messages) > 10:
-            recent_messages = messages[-10:]
-            old_messages = messages[:-10]
-            summary = model.invoke({"question": "다음 대화를 요약해줘", "history": old_messages})
-            messages = [summary] + recent_messages
-        
-        return messages
-    except ChatSession.DoesNotExist:
-        return []
-    
-def save_history(user_id: int, session_id: int, question: str, response: str):
-    """
-    Django ORM을 사용하여 대화 내용 저장.
-    """
-    try:
-        with transaction.atomic():
-            session, created = ChatSession.objects.get_or_create(session_id=session_id, user_id=user_id)
-            Chats.objects.create(session=session, user_id=user_id, question_type='text',
-                                question_content=question, response_content=response)
-    except Exception as e:
-        print(f"Error saving chat history: {e}")
+def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory:
+    """대화 내용 불러오기 최신 대화 10개는 원문 그대로 가져오고 그 이전 대화는 요약한다."""
+    if (user_id, history_id) not in store:
+        try:
+            conn = sqlite3.connect("history.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT messages FROM chat_history WHERE user_id=? AND history_id=?", (user_id, history_id))
+            result = cursor.fetchone()
+            conn.close()
+        except:
+            result = None
 
-def mkhisid(user_id: int):
-    """
-    새로운 ChatSession 생성 및 ID 반환.
-    """
-    session = ChatSession.objects.create(user_id=user_id)
-    return session.session_id
+        if result:
+            messages = eval(result[0])  # 저장된 문자열을 리스트로 변환
+        else:
+            messages = []
+
+        # 세션 메모리에서만 오래된 대화를 요약 (저장된 DB 데이터는 그대로 유지)
+        if len(messages) > 10:
+            recent_messages = messages[-10:]  # 최신 10개 유지
+            old_messages = messages[:-10]  # 요약할 메시지
+            summary = model.invoke({"question": "다음 대화를 요약해줘", "history": old_messages})  # 요약 수행
+            messages = [summary] + recent_messages  # 요약 + 최신 메시지 합침
+        store[(user_id, history_id)] = InMemoryHistory(messages=messages)
+    return store[(user_id, history_id)]
+
+def mkhisid(user_id):
+    """history_id 생성 함수"""
+    while True:
+        history_id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        if user_id + history_id not in store.keys():
+            # user_id와 history_id가 없는 경우 종료
+            return history_id
