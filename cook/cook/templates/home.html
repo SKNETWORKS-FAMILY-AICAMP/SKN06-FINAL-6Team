@@ -94,7 +94,7 @@
             background-color: darkred;
         }
 
-        /* ✅ 쿠키 모달창 */
+        /* 쿠키 모달창 */
         .modal {
             display: none;
             position: fixed;
@@ -113,7 +113,7 @@
             border-radius: 10px;
             width: 400px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            text-align: left;
+            text-align: center;
         }
 
         .modal-content h2 {
@@ -221,66 +221,68 @@
 </head>
 
 <body>
-    <div class="header">
-        {% if request.user.is_authenticated %}
-            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
-            <div class="profile-img-container" onclick="toggleDropdown()">
-                {% if request.user.profile_picture %}
-                    <img src="{{ request.user.profile_picture.url }}" alt="프로필 사진" class="profile-img">
-                {% else %}
-                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
-                {% endif %}
-            </div>
+<div class="header">
+    {% if user.is_authenticated %}
+        <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+        <div class="profile-img-container" onclick="toggleDropdown()">
+            {% if user.user_photo %}
+                <img src="{{ user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+            {% else %}
+                <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+            {% endif %}
+        </div>
 
-            <div class="dropdown-menu" id="dropdown-menu">
-                <a href="{% url 'mypage' %}">My Page</a>
-                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
-            </div>
-        {% else %}
-            <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+        <div class="dropdown-menu" id="dropdown-menu">
+            <a href="{% url 'mypage' %}">My Page</a>
+            <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+        </div>
+    {% else %}
+        <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+    {% endif %}
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div class="logo">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO">
+        </div>
+        <div class="description">꾸깃꾸깃은 사용자 기반 레시피 추천 챗봇입니다.</div>
+        <a href="{% url 'chat' %}" class="btn start-btn">시작하기</a>
+    </div>
+
+    <div class="image-display">
+        <img src="{% static 'imgs/chat_example.png' %}" alt="CHAT 예시 화면">
+    </div>
+</div>
+
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2>🍪 쿠키 안내</h2>
+        {% if user.is_authenticated %}
+            <p>현재 보유 중인 쿠키: <strong>{{ user.points|default:"0" }}개</strong></p>
+            <ul>
+                <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+            </ul>
         {% endif %}
     </div>
+</div>
 
-    <div class="main">
-        <div class="sidebar">
-            <div class="logo">
-                <img src="{% static 'imgs/logo.png' %}" alt="LOGO">
-            </div>
-            <div class="description">꾸깃꾸깃은 사용자 기반 레시피 추천 챗봇입니다.</div>
-            <a href="{% url 'chat' %}" class="btn start-btn">시작하기</a>
-        </div>
+<script>
+    function toggleDropdown() {
+        document.getElementById('dropdown-menu').classList.toggle('show');
+    }
 
-        <div class="image-display">
-            <img src="{% static 'imgs/chat_example.png' %}" alt="CHAT 예시 화면">
-        </div>
-    </div>
+    function openModal() {
+        document.getElementById('myModal').style.display = 'block';
+    }
 
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2>🍪 쿠키 안내</h2>
-                <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
-                <ul>
-                    <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
-                    <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
-                    <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
-                    <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
-                </ul>
-        </div>
-    </div>
-
-    <script>
-        function toggleDropdown() {
-            document.getElementById('dropdown-menu').classList.toggle('show');
-        }
-
-        function openModal() {
-            document.getElementById('myModal').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('myModal').style.display = 'none';
-        }
-    </script>
+    function closeModal() {
+        document.getElementById('myModal').style.display = 'none';
+    }
+</script>
 </body>
 </html>

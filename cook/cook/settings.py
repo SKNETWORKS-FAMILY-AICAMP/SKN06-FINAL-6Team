@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#ly=xxpp56j$^b%8d&$vn29fmg(*z8-zezxxw$%*oywib5idg5'
+SECRET_KEY = 'django-insecure-tr=%p*wzknz)y4cxa4#o1_-@vlb300q3r8kc9upj!*=^u*0r)n'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -27,9 +27,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'account',
-    'review',
-    'django_extensions',
     'chat',
+    'review',
 ]
 
 MIDDLEWARE = [
@@ -47,7 +46,12 @@ ROOT_URLCONF = 'cook.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "cook" / "templates", BASE_DIR / "account" / "templates"],
+        'DIRS': [os.path.join(BASE_DIR, 'cook', 'templates'),
+                os.path.join(BASE_DIR, 'account', 'templates'),
+                os.path.join(BASE_DIR, 'chat', 'templates'),
+                os.path.join(BASE_DIR, 'review', 'templates'),
+                ],
+        'APP_DIRS': True,
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -69,7 +73,7 @@ WSGI_APPLICATION = 'cook.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'user.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -78,18 +82,10 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', "OPTIONS": {"min_length": 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
 
@@ -124,7 +120,7 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 LOGIN_URL = '/account/login/'
 
 # 커스텀 유저 모델 설정
-AUTH_USER_MODEL = 'account.CustomUser'
+AUTH_USER_MODEL = 'account.Users'
 
 #카카오톡 RestAPI키
 KAKAO_REST_API_KEY = 'cef73be738ef09d08640bcdfa716d4dc'
@@ -138,8 +134,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'cookitcookeat@gmail.com'  # 발신자 이메일
-EMAIL_HOST_PASSWORD = 'jotobmzoiptiosac'  # 앱 비밀번호 사용
+EMAIL_HOST_PASSWORD = 'jdceaodzlqughsgm'  # 앱 비밀번호 사용
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"  # 기본 설정

@@ -1,0 +1,238 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}사이트 제목{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <script>
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+
+        function toggleDropdown() {
+            document.getElementById("profile-dropdown").classList.toggle("show");
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.profile-img')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #ffffff;
+        }
+
+        .logo img {
+            height: 80px;
+            cursor: pointer;
+        }
+
+        /* 🔹 프로필 & 쿠키 아이콘 컨테이너 */
+        .profile-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;  /* 쿠키와 프로필 간격 조절 */
+        }
+
+        .cookie-icon {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+        }
+
+        .profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            object-fit: cover;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 100px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: black;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .show {
+            display: block;
+        }
+
+        /* 🔹 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        .modal-content h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-content ul li {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-content ul li span {
+            font-size: 18px;
+        }
+
+        .close-btn {
+            color: #555;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <!-- 홈 버튼 -->
+        <div class="logo">
+            <a href="{% url 'home' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="홈">
+            </a>
+        </div>
+
+        <!-- 프로필 & 쿠키 아이콘 -->
+        <div class="profile-container">
+            {% if user.is_authenticated %}
+                <!-- 쿠키 아이콘 -->
+                <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+                
+                <!-- 프로필 이미지 -->
+                {% if user.user_photo %}
+                    <img src="{{ user.user_photo.url }}" alt="Profile" class="profile-img" onclick="toggleDropdown()">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="Default Profile" class="profile-img" onclick="toggleDropdown()">
+                {% endif %}
+
+                <!-- 프로필 드롭다운 -->
+                <div id="profile-dropdown" class="dropdown-content">
+                    <a href="{% url 'mypage' %}">MY PAGE</a>
+                    <a href="{% url 'logout' %}">로그아웃</a>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" style="color: black; text-decoration: none; margin-right: 10px;">로그인</a>
+                <a href="{% url 'signup' %}" style="color: black; text-decoration: none;">회원가입</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 쿠키 모달 -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>🍪 쿠키 안내</h2>
+            <p>현재 보유 중인 쿠키: <strong>{{ user.points|default:'0' }}개</strong></p>
+            <ul>
+                <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let modal = document.getElementById("myModal");
+        let openBtn = document.querySelector(".cookie-icon");
+        let closeBtn = document.querySelector(".close-btn");
+
+        // 쿠키 아이콘 클릭 시 모달 열기
+        openBtn.addEventListener("click", function() {
+            modal.style.display = "block";
+        });
+
+        // 닫기 버튼 클릭 시 모달 닫기
+        closeBtn.addEventListener("click", function() {
+            modal.style.display = "none";
+        });
+
+        // ✅ 모달 바깥 영역 클릭 시 닫기
+        window.addEventListener("click", function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    });
+</script>
+</html>

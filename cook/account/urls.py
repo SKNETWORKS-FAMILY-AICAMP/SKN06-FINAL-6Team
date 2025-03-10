@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 from .views import kakao_login, kakao_callback, kakao_logout, kakao_delete_account
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('signup/', views.signup, name='signup'),          # 회원가입
@@ -20,3 +22,6 @@ urlpatterns = [
     path("verify-otp/", views.verify_otp, name="verify_otp"),        # OTP 인증
     path("reset-password/", views.reset_password, name="reset_password"), # 비밀번호 재설정
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

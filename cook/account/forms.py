@@ -1,18 +1,46 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser
+from .models import Users
 
-class CustomUserCreationForm(UserCreationForm):
-    full_name = forms.CharField(max_length=50, required=True, label="이름")
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+from django import forms
+from django.contrib.auth.hashers import make_password
+from .models import Users
+
+class CustomUserCreationForm(forms.ModelForm):
+    """회원가입 폼 (Users 모델 기반)"""
+    login_id = forms.CharField(max_length=50, required=True, label="로그인 ID")
+    email = forms.EmailField(required=True, label="이메일")
+    name = forms.CharField(max_length=50, required=True, label="이름")
     nickname = forms.CharField(max_length=30, required=True, label="별명")
-    birthdate = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={'type': 'date'}))
-    profile_picture = forms.ImageField(required=False, label="프로필 사진")
+    birthday = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={'type': 'date'}))
+    user_photo = forms.ImageField(required=False, label="프로필 사진")
+
+    # ✅ Users 모델에는 없지만, 폼에서만 사용할 필드
+    password1 = forms.CharField(
+        label="비밀번호",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 입력"}),
+        required=True
+    )
+    password2 = forms.CharField(
+        label="비밀번호 확인",
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 확인"}),
+        required=True
+    )
 
     class Meta:
-        model = CustomUser
-        fields = ("username", "email", "full_name", "nickname", "birthdate", "password1", "password2", 'profile_picture')
+        model = Users
+        fields = ("login_id", "email", "name", "nickname", "birthday", "user_photo")  # ✅ `password1`, `password2` 제거
 
     def clean(self):
+        """비밀번호 확인 로직 추가"""
         cleaned_data = super().clean()
         password1 = cleaned_data.get("password1")
         password2 = cleaned_data.get("password2")
@@ -21,43 +49,56 @@ class CustomUserCreationForm(UserCreationForm):
             raise forms.ValidationError("비밀번호가 일치하지 않습니다.")
 
         return cleaned_data
-# 아이디 찾기 폼 (이름 + 이메일 입력)
+
+    def save(self, commit=True):
+        """비밀번호를 해싱하여 저장"""
+        user = super().save(commit=False)
+        user.password = make_password(self.cleaned_data["password1"])  # ✅ 비밀번호 해싱 후 저장
+        if commit:
+            user.save()
+        return user
+
+# 아이디 찾기 폼
 class FindIDForm(forms.Form):
-    full_name = forms.CharField(label="이름", max_length=100)
+    name = forms.CharField(label="이름", max_length=100)
     email = forms.EmailField(label="이메일")
 
-# 비밀번호 찾기 폼 (아이디 + 이름 + 이메일 입력)
+# 비밀번호 찾기 폼
 class FindPWForm(forms.Form):
-    username = forms.CharField(label="아이디", max_length=150)
-    full_name = forms.CharField(label="이름", max_length=100)
+    login_id = forms.CharField(label="아이디", max_length=150)
+    name = forms.CharField(label="이름", max_length=100)
     email = forms.EmailField(label="이메일")
-
-# 이메일 인증 폼 (6자리 인증번호 입력)
-class EmailVerificationForm(forms.Form):
-    code = forms.CharField(label="인증번호", max_length=6)
 
 # 정보 수정 폼
 class UserUpdateForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(), required=False)
 
     class Meta:
-        model = CustomUser
-        fields = ['nickname','profile_picture']
+        model = Users
+        fields = ['nickname', 'user_photo']
 
     def save(self, commit=True):
-        """비밀번호를 입력한 경우 업데이트"""
         user = super().save(commit=False)
         if self.cleaned_data.get('password'):
             user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
-        return user   
-    
+        return user
+
+# 이메일 인증 폼 (6자리 인증번호 입력)
+class EmailVerificationForm(forms.Form):
+    code = forms.CharField(
+        label="인증번호",
+        max_length=6,
+        widget=forms.TextInput(attrs={"placeholder": "인증번호 입력"})
+    )
+
+
+# 비밀번호 재설정 폼
 class PasswordResetForm(forms.Form):
-    """비밀번호 재설정 폼"""
     password = forms.CharField(
         label="새 비밀번호",
-        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 입력"}),
+        widget=forms.PasswordInput(attrs={"placeholder": "새 비밀번호 입력"}),
         required=True
     )
     confirm_password = forms.CharField(

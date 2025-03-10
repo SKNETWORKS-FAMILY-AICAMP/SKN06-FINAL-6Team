@@ -1,24 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import F
-from .models import Review, ReviewImage, User, ReviewLike, ReviewComment, Reply
-from .forms import ReviewForm
-from django.contrib.auth import get_user_model
 from django.http import JsonResponse
-
-
-User = get_user_model()
+from .models import UserReviews, ReviewImages, Users, ReviewComments
+from chat.models import UserSelectedMenus
+from .forms import ReviewForm
 
 # 리뷰 목록 보기 (검색 & 정렬)
 def review_list(request):
-    query = request.GET.get("query", "").strip()  # 검색어 (메뉴명 검색)
-    sort = request.GET.get("sort", "latest")  # 정렬 방식 (기본값: 최신순)
+    query = request.GET.get("query", "").strip()
+    sort = request.GET.get("sort", "latest")
 
-    reviews = Review.objects.all()
-
+    reviews = UserReviews.objects.all()
     if query:
-        reviews = reviews.filter(menu_name__icontains=query)
-
+        reviews = reviews.filter(selected_menu__menu_name__icontains=query)  # ✅ 필드명 수정
+    
     sort_options = {
         "views": "-views",
         "rating": "-rating",
@@ -26,13 +22,13 @@ def review_list(request):
     }
     reviews = reviews.order_by(sort_options.get(sort, "-created_at"))
 
-    return render(request, "review/review_list.html", {"reviews": reviews, "query": query, "sort": sort})
+    return render(request, "review_list.html", {"reviews": reviews, "query": query, "sort": sort})
 
 # 리뷰 상세 보기 (조회수 증가)
 def review_detail(request, pk):
-    review = get_object_or_404(Review, pk=pk)
-    Review.objects.filter(pk=pk).update(views=F("views") + 1)  # 조회수 증가
-    return render(request, "review/review_detail.html", {"review": review})
+    review = get_object_or_404(UserReviews, pk=pk)
+    UserReviews.objects.filter(pk=pk).update(views=F("views") + 1)
+    return render(request, "review_detail.html", {"review": review})
 
 # 리뷰 작성 (다중 이미지 업로드 가능)
 @login_required
@@ -44,121 +40,100 @@ def review_create(request):
         if form.is_valid():
             review = form.save(commit=False)
             review.user = request.user
+
+            # ✅ 선택한 메뉴 정보 저장
+            selected_menu = request.POST.get("selected_menu")
+            if selected_menu:
+                review.selected_menu = get_object_or_404(UserSelectedMenus, pk=selected_menu)
+
             review.save()
 
-            # 다중 이미지 업로드 처리
             for file in files:
-                ReviewImage.objects.create(review=review, image=file)
+                ReviewImages.objects.create(review=review, image_url=file)
 
-            # 쿠키 지급 로직 추가
-            if files:  # 이미지가 하나라도 있으면 15 쿠키 지급
-                request.user.point += 15
-            else:  # 이미지가 없으면 10 쿠키 지급
-                request.user.point += 10
-
-            request.user.save()  # 쿠키 업데이트 저장
-
-            return redirect("review_detail", pk=review.pk)  # ✅ 작성 후 상세 페이지로 이동
+            return redirect("review_detail", pk=review.pk)
     else:
         form = ReviewForm()
-
-    return render(request, "review/review_form.html", {"form": form})  # ✅ 올바른 템플릿 연결
-
+    
+    return render(request, "review_form.html", {"form": form})
 
 # 리뷰 수정 (기존 이미지 유지 + 새 이미지 추가 가능)
 @login_required
 def review_update(request, pk):
-    review = get_object_or_404(Review, pk=pk, user=request.user)
-
+    review = get_object_or_404(UserReviews, pk=pk, user=request.user)
+    
     if request.method == "POST":
         form = ReviewForm(request.POST, instance=review)
         files = request.FILES.getlist("images")
-
+        
         if form.is_valid():
             form.save()
-
             for file in files:
-                ReviewImage.objects.create(review=review, image=file)
-
+                ReviewImages.objects.create(review=review, image_url=file)
+            
             return redirect("review_detail", pk=pk)
     else:
         form = ReviewForm(instance=review)
-
-    return render(request, "review/review_form.html", {"form": form, "review": review})
+    
+    return render(request, "review_form.html", {"form": form, "review": review})
 
 # 특정 사용자의 리뷰 목록 조회
 def user_reviews(request, username):
-    user = get_object_or_404(User, username=username)
-    
-    # 🔥 GET 파라미터에서 정렬 옵션 가져오기 (기본값: 최신순)
+    user = get_object_or_404(Users, username=username)
     sort_option = request.GET.get('sort', 'created_at')
 
-    # 사용자가 선택한 옵션에 따라 정렬
-    if sort_option == 'views':
-        reviews = Review.objects.filter(user=user).order_by('-views')
-    elif sort_option == 'rating':
-        reviews = Review.objects.filter(user=user).order_by('-rating')
-    else:  # 최신순 (기본값)
-        reviews = Review.objects.filter(user=user).order_by('-created_at')
+    reviews = UserReviews.objects.filter(user=user).order_by(
+        {'views': '-views', 'rating': '-rating'}.get(sort_option, '-created_at')
+    )
 
-    return render(request, "review/user_reviews.html", {
-        "reviews": reviews, 
-        "user": user, 
-        "sort_option": sort_option
-    })
+    return render(request, "user_reviews.html", {"reviews": reviews, "user": user, "sort_option": sort_option})
 
 @login_required
 def review_like(request, pk):
-    """좋아요 기능"""
-    review = get_object_or_404(Review, pk=pk)
-    like, created = ReviewLike.objects.get_or_create(review=review, user=request.user)
-
+    review = get_object_or_404(UserReviews, pk=pk)
+    like, created = ReviewComments.objects.get_or_create(
+        review=review, user=request.user, like_type='review_like'
+    )
+    
     if not created:
-        like.delete()  # 이미 좋아요 눌렀다면 삭제
-
-    return JsonResponse({"likes": review.likes.count()})
+        like.delete()
+    
+    likes_count = ReviewComments.objects.filter(review=review, like_type='review_like').count()
+    return JsonResponse({"likes": likes_count})
 
 @login_required
 def add_comment(request, pk):
-    """댓글 추가"""
-    review = get_object_or_404(Review, pk=pk)
-
+    review = get_object_or_404(UserReviews, pk=pk)
+    
     if request.method == "POST":
         content = request.POST.get("content", "").strip()
         if content:
-            ReviewComment.objects.create(review=review, user=request.user, content=content)
+            ReviewComments.objects.create(review=review, user=request.user, comment_text=content, like_type='comment')
     
     return redirect("review_detail", pk=pk)
 
 @login_required
 def delete_comment(request, pk):
-    """댓글 삭제"""
-    comment = get_object_or_404(ReviewComment, pk=pk)
-
+    comment = get_object_or_404(ReviewComments, pk=pk, like_type='comment')
     if request.user == comment.user:
         comment.delete()
-        return JsonResponse({"success": True}) # JSON 응답 반환 (AJAX와 연동됨)
-    
+        return JsonResponse({"success": True})
     return JsonResponse({"error": "권한이 없습니다."}, status=403)
 
 @login_required
 def add_reply(request, comment_id):
-    """대댓글 추가"""
-    comment = get_object_or_404(ReviewComment, id=comment_id)
-
+    comment = get_object_or_404(ReviewComments, id=comment_id, like_type='comment')
+    
     if request.method == "POST":
         content = request.POST.get("content", "").strip()
         if content:
-            Reply.objects.create(comment=comment, user=request.user, content=content)
-
+            ReviewComments.objects.create(review=comment.review, user=request.user, comment_text=content, like_type='comment', parent_id=comment.comment_id)
+    
     return redirect("review_detail", pk=comment.review.pk)
 
 @login_required
 def delete_reply(request, reply_id):
-    """대댓글 삭제"""
-    reply = get_object_or_404(Reply, id=reply_id)
-
+    reply = get_object_or_404(ReviewComments, id=reply_id, like_type='comment')
     if request.user == reply.user:
         reply.delete()
-
-    return redirect("review_detail", pk=reply.comment.review.pk)
+    return redirect("review_detail", pk=reply.review.pk)

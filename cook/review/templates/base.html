@@ -115,6 +115,33 @@
             text-align: center;
         }
         
+        .modal-content h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-content ul li {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-content ul li span {
+            font-size: 18px;
+        }
+
         .close-btn {
             color: #555;
             float: right;
@@ -145,8 +172,8 @@
                 <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
                 
                 <!-- 프로필 이미지 -->
-                {% if request.user.profile_image %}
-                    <img src="{{ request.user.profile_image.url }}" alt="Profile" class="profile-img" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="Profile" class="profile-img" onclick="toggleDropdown()">
                 {% else %}
                     <img src="{% static 'imgs/user.png' %}" alt="Default Profile" class="profile-img" onclick="toggleDropdown()">
                 {% endif %}
@@ -168,7 +195,7 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
             <h2>🍪 쿠키 안내</h2>
-            <p>현재 보유 중인 쿠키: <strong>{{ request.user.point|default:'0' }}개</strong></p>
+            <p>현재 보유 중인 쿠키: <strong>{{ request.user.points|default:'0' }}개</strong></p>
             <ul>
                 <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
                 <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
