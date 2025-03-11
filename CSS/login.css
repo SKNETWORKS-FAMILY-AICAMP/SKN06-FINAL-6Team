@@ -1,0 +1,151 @@
+/* 전체 페이지 스타일 */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #FFFFFF;
+    font-family: Arial, sans-serif;
+    position: relative;
+}
+
+/* 로그인 컨테이너 */
+.container {
+    width: 300px; /* 컨테이너 크기 */
+    margin: 0 auto; /* 가운데 정렬 */
+    align-items: center;
+    text-align: center; /* 내부 요소 텍스트 가운데 정렬 */
+}
+
+/* 로그인 제목 스타일 */
+.container h2 {
+    font-size: 24px; /* 글씨 크기 */
+    font-weight: bold; /* 글씨 굵기 */
+    margin-bottom: 20px; /* 아래 여백 */
+    color: #000; /* 글씨 색 */
+    text-align: center;
+}
+
+
+/* 왼쪽 상단 로고 */
+.logo  img{
+    position: absolute;
+    width: 70px;
+    height: 65px;
+    left: 24px;
+    top: 18px;
+    cursor: pointer;
+}
+
+
+/* 입력 필드 스타일 */
+.input-group {
+    position: relative;
+    width:100%;
+    margin: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    padding-right: 45px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+/* 비밀번호 표시/숨김 버튼 */
+.toggle-password {
+    position: absolute;
+    right: 10px; /* 입력창 오른쪽 끝에 위치 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    background-color: white; /* 배경색 추가 (아이콘이 네모 안에서 잘 보이게) */
+    padding: 2px;
+}
+
+/* 로그인 버튼 컨테이너 (별명 입력창의 오른쪽 아래 배치) */
+.button-container {
+    position: flex;
+    justify-content: center; 
+    margin-top: 10px; 
+}
+
+/* 로그인하기 버튼 스타일 */
+.login-btn {
+    width: 100%;
+    background: #BAC5F6; /* 버튼 배경색 */
+    color: #FFFFFF; /* 글씨 색 */
+    padding: 10px;
+    border: none;
+    border-radius: 10px; /* 모서리를 둥글게 */
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+/* 마우스를 올렸을 때 버튼 색상 변경 */
+.login-btn:hover {
+    background: #A2B5E6;
+}
+
+/* 아이디/비밀번호 찾기 & 회원가입 링크 */
+.links {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+/* 일반 링크 스타일 */
+.links a {
+    color: #000;
+    text-decoration: underline; /* 밑줄 표시시 */
+    cursor: pointer; /* 클릭 가능한 손가락 모양 */
+}
+
+/* 마우스를 올리면 밑줄 표시 */
+.links a:hover {
+    text-decoration: none;
+}
+
+
+/* OR 구분선 */
+.separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.separator::before,
+.separator::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ccc;
+}
+
+.separator span {
+    padding: 0 10px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* 🌟 카카오 로그인 버튼 (이미지) */
+.kakao-btn {
+    display: absolute;
+    width: 50px; /* 카카오 로그인 버튼 크기 유지 */
+    height: auto;
+    left: auto;
+    top: 100px;
+    cursor: pointer;
+}
+
+
