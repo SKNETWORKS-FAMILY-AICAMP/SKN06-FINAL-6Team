@@ -11,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_qdrant import FastEmbedSparse, RetrievalMode, QdrantVectorStore
 from langchain_community.document_loaders import DataFrameLoader
 from dotenv import load_dotenv
 
@@ -322,20 +322,16 @@ def crawling():
         ''')
     conn.commit()
     conn.close()
-
-    # vector db에 저장
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    fais = FAISS.load_local("./chat/faiss/fun_faiss", embeddings, allow_dangerous_deserialization=True)
-
     df['page_content'] = df['name'] + " " + df['ingredients'] + " " + df['recipe']
     df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
-    conn.close()
     loader = DataFrameLoader(df, page_content_column="page_content")
     docs = loader.load()
 
-    fais.add_documents(docs) # 추가한 데이터 저장
-    print(f"*** {datetime.today()}: add.")
-    fais.save_local("./chat/faiss/fun_faiss")
-    print(f"*** {datetime.today()}: saved.")
+    # vector db에 저장
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    sparse_embeddings = FastEmbedSparse(model_name="Qdrant/bm25")
+    url = "http://localhost:6333/"
+    qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="funs", url=url, retrieval_mode=RetrievalMode.HYBRID)
+    qdrant.add_documents(docs)
 
 crawling()
