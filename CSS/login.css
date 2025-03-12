@@ -42,7 +42,7 @@ body {
 .input-group {
     position: relative;
     width:100%;
-    margin: 15px;
+    margin: 15px 0;
     display: flex;
     justify-content: center;
 }
@@ -101,6 +101,7 @@ body {
     display: flex;
     justify-content: space-between;
     font-size: 14px;
+    margin-top: 12px;
     margin-bottom: 15px;
 }
 
@@ -138,14 +139,15 @@ body {
     color: #666;
 }
 
-/* 🌟 카카오 로그인 버튼 (이미지) */
+/* 카카오 로그인 버튼 (이미지) */
 .kakao-btn {
-    display: absolute;
-    width: 50px; /* 카카오 로그인 버튼 크기 유지 */
-    height: auto;
+    width: 100%; /* 카카오 로그인 버튼 크기 유지 */
     left: auto;
     top: 100px;
     cursor: pointer;
 }
 
-
+.kakao-btn img {
+    width: 100%;
+    height: 100%;
+}

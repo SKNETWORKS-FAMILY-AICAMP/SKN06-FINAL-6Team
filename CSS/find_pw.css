@@ -41,7 +41,7 @@ body {
 .input-group {
     position: relative;
     width:100%;
-    margin: 15px;
+    margin: 15px 0;
     display: flex;
     justify-content: center;
 }
