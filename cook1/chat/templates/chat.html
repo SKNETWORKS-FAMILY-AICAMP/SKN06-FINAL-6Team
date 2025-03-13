@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #chatBox {
+            width: 50%;
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .chat-message {
+            display: flex;
+            margin: 10px 0;
+            max-width: 80%;
+        }
+
+        .user {
+            justify-content: flex-end;
+        }
+
+        .ai {
+            justify-content: flex-start;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 10px;
+            word-wrap: break-word;
+        }
+
+        .user .message {
+            background-color: #007bff;
+            color: white;
+            border-top-right-radius: 0;
+            align-self: flex-end;
+        }
+
+        .ai .message {
+            background-color: #e9ecef;
+            color: black;
+            border-top-left-radius: 0;
+            align-self: flex-start;
+        }
+
+        #inputContainer {
+            margin-top: 10px;
+            display: flex;
+            width: 50%;
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        #imageLabel {
+            margin-left: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+        }
+
+        button {
+            margin-left: 10px;
+            padding: 10px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #imagePreview {
+            margin-top: 10px;
+            max-width: 200px;
+            display: none;
+        }
+    </style>
+
+    <script>
+        async function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const imageInput = document.getElementById("imageInput");
+            const message = messageInput.value.trim();
+            const imageFile = imageInput.files[0];
+
+            if (!message && !imageFile) {
+                alert("메시지 또는 이미지를 입력하세요.");
+                return;
+            }
+
+            const requestData = {
+                user_id: "1",
+                query: message
+            };
+
+            if (imageFile) formData.append("image", imageFile);
+
+            // 사용자 메시지 추가
+            if (message) {
+                appendMessage("사용자", message, "user");
+            }
+
+            // 이미지 미리보기 추가
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    appendImage("사용자", e.target.result, "user");
+                };
+                reader.readAsDataURL(imageFile);
+            }
+
+            const response = await fetch("./chat_api/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            const data = await response.json();
+            if (data.response) {
+                appendMessage("AI", data.response, "ai");
+
+                if (data.detected_ingredients.length > 0) {
+                    appendMessage("AI", "📌 감지된 재료: " + data.detected_ingredients.join(", "), "ai");
+                }
+            } else {
+                alert("오류 발생: " + data.error);
+            }
+
+            // 입력 필드 초기화
+            messageInput.value = "";
+            imageInput.value = "";
+            document.getElementById("imagePreview").style.display = "none";
+        }
+
+        async function startNewChat() {
+            const response = await fetch("./new_chat/", {
+                method: "POST",
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById("chatBox").innerHTML = "";
+                document.getElementById("messageInput").value = "";
+            }
+        }
+        
+        function appendMessage(sender, text, type) {
+            const chatBox = document.getElementById("chatBox");
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("chat-message", type);
+            messageDiv.innerHTML = `<div class="message"><strong>${sender}:</strong> ${text}</div>`;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function appendImage(sender, imageUrl, type) {
+            const chatBox = document.getElementById("chatBox");
+            const imageDiv = document.createElement("div");
+            imageDiv.classList.add("chat-message", type);
+            imageDiv.innerHTML = `<div class="message"><strong>${sender}:</strong><br><img src="${imageUrl}" width="150"></div>`;
+            chatBox.appendChild(imageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function previewImage() {
+            const imageInput = document.getElementById("imageInput");
+            const imagePreview = document.getElementById("imagePreview");
+            const file = imageInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.style.display = "none";
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>꾸깃꾸깃</h1>
+    <button onclick="startNewChat()">새 채팅 시작</button>
+
+    <div id="chatBox">
+        {% for chat in chat_history %}
+            <div class="chat-message user">
+                <div class="message"><strong>사용자:</strong> {{ chat.user }}</div>
+            </div>
+            <div class="chat-message ai">
+                <div class="message"><strong>AI:</strong> {{ chat.bot }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="inputContainer">
+        <label id="imageLabel" for="imageInput">📸</label>
+        <input type="text" id="messageInput" placeholder="메시지를 입력하세요" onkeypress="if(event.keyCode==13) sendMessage();">
+        <input type="file" id="imageInput" accept="image/*" onchange="previewImage()">
+        
+        <img id="imagePreview">
+        <button onclick="sendMessage()">전송</button>
+    </div>
+
+</body>
+</html>
