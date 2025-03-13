@@ -1,10 +1,10 @@
 import os
 from lcel.lcel import mkch
 from utils.memories import mkhisid
-from image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
+from utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
 
 def chat(user_id):
-    print("✅ Chatbot이 시작되었습니다!")  # 디버깅용
+    print("Chatbot이 시작되었습니다!")  # 디버깅용
 
     history_id = mkhisid(user_id)
     cchain = mkch()
@@ -35,14 +35,17 @@ def chat(user_id):
         combined_query = " ".join(text_input)
         query_with_ingredients = f"{combined_query} 감지된 재료: {', '.join(detected_ingredients)}" if detected_ingredients else combined_query
 
-        print(f"📝 Final Query: {query_with_ingredients}")
 
         # 🔥 LLM에 질문을 전달하여 요리 추천 받기
-        res = cchain.invoke(
+        res = cchain.stream(
             {"question": query_with_ingredients},
             config={"configurable": {"user_id": user_id, "history_id": history_id}}
         )
 
-        # ✅ 최종 결과 출력
-        print("\n🍽️ 추천 요리 목록:")
-        print(res)
+        print("AI: ", end="", flush=True)
+        for chunk_gen in res:
+            for chunk in chunk_gen:
+                print(chunk.content, end="", flush=True)  # 실시간 출력
+        print()  # 줄 바꿈
+
+chat("test_user")
