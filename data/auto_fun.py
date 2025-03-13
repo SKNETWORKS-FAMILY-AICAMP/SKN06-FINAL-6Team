@@ -13,6 +13,8 @@ from selenium.webdriver.common.by import By
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import FastEmbedSparse, RetrievalMode, QdrantVectorStore
 from langchain_community.document_loaders import DataFrameLoader
+
+from dotenv import dotenv_values
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -330,8 +332,8 @@ def crawling():
     # vector db에 저장
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     sparse_embeddings = FastEmbedSparse(model_name="Qdrant/bm25")
-    url = "http://localhost:6333/"
-    qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="funs", url=url, retrieval_mode=RetrievalMode.HYBRID)
+    urls = dotenv_values()["QDRANT_SERVER_URL"]
+    qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="funs", url=urls, retrieval_mode=RetrievalMode.HYBRID)
     qdrant.add_documents(docs)
 
 crawling()

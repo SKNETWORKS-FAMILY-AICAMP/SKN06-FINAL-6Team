@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from utils.search_agent import search_tavily_recipe, tavily_recipe_search_tool  # Tavily 검색 함수 추가
+from utils.search_agent import tavily_recipe_search_tool  # Tavily 검색 함수 추가
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,7 +28,7 @@ def format_docs(docs):
     for doc in docs:
         content = {}
         txt = doc.page_content.split(" ||| ")
-        keys = ["name", "ingredients", "recipe", "category", "info", "intro", "video"][:len(txt)]
+        keys = ["name", "ingredients", "recipe", "category", "info", "intro"][:len(txt)]
         content.update(dict(zip(keys, txt)))
         content.update(doc.metadata)
 
@@ -121,7 +121,7 @@ def derived(query):
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
-    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs} | prompt_template | model
     return dchain
 
 def mkch():
