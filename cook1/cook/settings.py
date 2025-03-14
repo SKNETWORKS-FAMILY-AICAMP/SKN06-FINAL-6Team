@@ -104,13 +104,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-# Static 파일 설정
-STATIC_URL = '/static/'  # Static 파일 기본 URL
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "cook", "static")]
 
-# ✅ static 폴더 경로 추가
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  
-]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -147,4 +143,3 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"  # 기본 설정
 SESSION_COOKIE_AGE = 5000
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-

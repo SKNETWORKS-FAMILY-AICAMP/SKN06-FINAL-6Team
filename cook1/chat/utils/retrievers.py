@@ -1,9 +1,7 @@
 from langchain_openai import OpenAIEmbeddings
 from langchain.retrievers import MergerRetriever
 from langchain_qdrant import FastEmbedSparse, RetrievalMode, QdrantVectorStore
-
-from dotenv import load_dotenv
-from dotenv import dotenv_values
+from dotenv import dotenv_values, load_dotenv
 
 load_dotenv()
 
@@ -11,7 +9,7 @@ def load_retriever(isref=True, isfun=True, isman=True):
     """local에서 vector db load하는 함수"""
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     sparse_embeddings = FastEmbedSparse(model_name="Qdrant/bm25")
-    url = dotenv_values()["QDRANT_SERVER_URL"] # 변경
+    url = dotenv_values()["QDRANT_SERVER_URL"]
     def ref():
         """냉장고를 부탁해 retriever 호출 함수"""
         qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="ref", url=url, retrieval_mode=RetrievalMode.HYBRID)

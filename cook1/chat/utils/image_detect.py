@@ -8,12 +8,14 @@ from torchvision import transforms
 import re
 
 # ✅ YOLO 및 CLIP 모델 로드
-BASE_DIR = os.getcwd()
 device = "cpu"
 
-# YOLO 모델 파일 경로
-yolo_model_food = YOLO(os.path.join(BASE_DIR, "chat", "runs", "detect", "train_식재료", "weights", "best.pt"))
-yolo_model_fridge = YOLO(os.path.join(BASE_DIR, "chat","runs", "detect","train_냉장고","weights","best.pt"))
+YOLO_FOOD_MODEL_PATH = r"C:\Users\Playdata\Desktop\COOK1\chat\runs\detect\train_식재료\weights\best.pt"
+YOLO_FRIDGE_MODEL_PATH = r"C:\Users\Playdata\Desktop\COOK1\chat\runs\detect\train_냉장고\weights\best.pt"
+
+# YOLO 모델 로드
+yolo_model_food = YOLO(YOLO_FOOD_MODEL_PATH)
+yolo_model_fridge = YOLO(YOLO_FRIDGE_MODEL_PATH)
 
 # CLIP 모델 로드
 clip_model, preprocess = clip.load("ViT-B/32", device=device)
@@ -138,16 +140,16 @@ def detect_ingredients(image_path):
                 label = class_dict.get(class_name, class_name)  # 한글 변환 (없으면 영어 그대로 유지)
 
                 # ✅ 신뢰도 기준 처리
-                if confidence >= 0.2:  # YOLO 신뢰도 0.2 이상이면 CLIP 실행 X
+                if confidence >= 0.4:  # YOLO 신뢰도 0.4 이상이면 CLIP 실행 X
                     detected_ingredients[label] = max(detected_ingredients.get(label, 0), confidence)
                 else:
-                    # 신뢰도가 0.2 미만이면 CLIP 보완 분석 실행
-                    print(f"⚠️ YOLO 신뢰도 {confidence:.2f} (0.2 미만), CLIP으로 보완 분석...")
+                    # 신뢰도가 0.4 미만이면 CLIP 보완 분석 실행
+                    print(f"⚠️ YOLO 신뢰도 {confidence:.2f} (0.4 미만), CLIP으로 보완 분석...")
                     low_confidence_boxes.append((label, confidence, box))
 
                 yolo_detected = True  # YOLO 감지 성공
 
-    # ✅ CLIP 보완 분석 (YOLO 신뢰도 0.2 미만인 박스)
+    # ✅ CLIP 보완 분석 (YOLO 신뢰도 0.4 미만인 박스)
     for label, confidence, box in low_confidence_boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])  
         cropped_img = image.crop((x1, y1, x2, y2))
@@ -182,8 +184,8 @@ def detect_ingredients(image_path):
                         detected_ingredients[ingredient_name] = max(detected_ingredients.get(ingredient_name, 0), conf)
                         print(f"✅ CLIP 분석 결과: {ingredient_name} (유사도 {conf:.2f})")
 
-    # ✅ CLIP 보완 분석 수행 후, 신뢰도 0.5 미만인 항목 제거
-    detected_ingredients = {k: v for k, v in detected_ingredients.items() if v >= 0.5}
+    # ✅ CLIP 보완 분석 수행 후, 신뢰도 0.6 미만인 항목 제거
+    detected_ingredients = {k: v for k, v in detected_ingredients.items() if v >= 0.6}
 
     # ✅ 모든 재료를 한글로 변환 & 중복 제거
     final_ingredients = set()

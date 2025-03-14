@@ -1,7 +1,7 @@
 import os
-from lcel.lcel import mkch
-from utils.memories import mkhisid
-from chat.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
+from chat.lcel.lcel import mkch
+from chat.utils.memories import mkhisid
+from chat.utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
 
 def chat(user_id):
     print("Chatbot이 시작되었습니다!")  # 디버깅용
@@ -43,11 +43,9 @@ def chat(user_id):
         )
 
         print("AI: ", end="", flush=True)
-       
         for chunk_gen in res:
             for chunk in chunk_gen:
                 print(chunk.content, end="", flush=True)  # 실시간 출력
-        
         print()  # 줄 바꿈
 
 chat("test_user")
