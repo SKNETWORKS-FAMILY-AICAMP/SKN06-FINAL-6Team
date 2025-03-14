@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from utils.search_agent import tavily_recipe_search_tool  # Tavily 검색 함수 추가
+from utils.agents import tavily_recipe_search_tool  # Tavily 검색 함수 추가
 from dotenv import load_dotenv
 
 load_dotenv()
