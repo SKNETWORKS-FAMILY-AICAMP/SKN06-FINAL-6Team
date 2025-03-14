@@ -1,88 +1,31 @@
-import sqlite3
-import pandas as pd
-
 from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import DataFrameLoader
-from langchain_community.vectorstores import FAISS
-from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever, MergerRetriever
+from langchain.retrievers import MergerRetriever
+from langchain_qdrant import FastEmbedSparse, RetrievalMode, QdrantVectorStore
 
 from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 load_dotenv()
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-
-def load(case):
-    # loader
-    if case == "funs":
-        conn = sqlite3.connect("./chat/db/funs.db")
-        df = pd.read_sql("SELECT * FROM menu", conn)
-
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
-        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
-        return docs
-    
-    elif case == "ref":
-        conn = sqlite3.connect("./chat/db/fridges.db")
-        df = pd.read_sql("SELECT * FROM menu", conn)
-
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe']
-        df.drop(columns=['name', 'ingredients', 'recipe'], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        docs = loader.load()
-        return docs
-    
-    else:
-        conn = sqlite3.connect("./chat/db/man.db")
-        df = pd.read_sql("SELECT * FROM recipes", conn)
-
-        df['page_content'] = df['name'] + " ||| " + df['ingredients'] + " ||| " + df['recipe'] + " ||| " + df['category'] + " ||| " + df['info'] + " ||| " + df['intro']
-        df.drop(columns=['name', 'ingredients', 'recipe', "info", "intro"], inplace=True)
-        conn.close()
-        loader = DataFrameLoader(df, page_content_column="page_content")
-        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(model_name='gpt-4o-mini', chunk_size=1000, chunk_overlap=0)
-        docs = loader.load_and_split(splitter)
-        return docs
-
 def load_retriever(isref=True, isfun=True, isman=True):
     """local에서 vector db load하는 함수"""
-    def mkretr(case, faiss_path):
-        """앙상블할 retriever 정의 함수"""
-        docs = load(case)
-
-        # vectordb 로드
-        fais = FAISS.load_local(faiss_path, embeddings, allow_dangerous_deserialization=True)
-
-        # BM25 retriever, FAISS retriever 앙상블
-        bm25_retr = BM25Retriever.from_documents(docs)
-        bm25_retr.k = 3
-        fais_retr = fais.as_retriever(search_type="mmr", search_kwargs={"k": 3})
-        
-        return bm25_retr, fais_retr
-    
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    sparse_embeddings = FastEmbedSparse(model_name="Qdrant/bm25")
+    url = dotenv_values()["QDRANT_SERVER_URL"]
     def ref():
         """냉장고를 부탁해 retriever 호출 함수"""
-        rbm25_retr, rfais_retr = mkretr("ref", "./chat/faiss/ref_faiss")
-        ensemble = EnsembleRetriever(retrievers=[rbm25_retr, rfais_retr],) # weights=[0.5, 0.5])
-        return ensemble
+        qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="ref", url=url, retrieval_mode=RetrievalMode.HYBRID)
+        return qdrant.as_retriever(search_type="mmr", search_kwargs={"k": 3})
 
     def fun():
         """편스토랑 retriever 호출 함수"""
-        fbm25_retr, ffais_retr = mkretr("funs", "./chat/faiss/fun_faiss")
-        ensemble = EnsembleRetriever(retrievers=[fbm25_retr, ffais_retr],) # weights=[0.5, 0.5])
-        return ensemble
+        qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="funs", url=url, retrieval_mode=RetrievalMode.HYBRID)
+        return qdrant.as_retriever(search_type="mmr", search_kwargs={"k": 3})
 
     def man():
         """만개의 레시피 retriever 호출 함수"""
-        mbm25_retr, mfais_retr = mkretr("man", "./chat/faiss/man_faiss")
-        ensemble = EnsembleRetriever(retrievers=[mbm25_retr, mfais_retr],) # weights=[0.5, 0.5])
-        return ensemble
+        qdrant = QdrantVectorStore.from_existing_collection(embedding=embeddings, sparse_embedding=sparse_embeddings, collection_name="man", url=url, retrieval_mode=RetrievalMode.HYBRID)
+        return qdrant.as_retriever(search_type="mmr", search_kwargs={"k": 3})
     
     retrievers = []
     if isref:
@@ -105,3 +48,5 @@ def load_retriever(isref=True, isfun=True, isman=True):
             retrievers = [ref(), fun(), man()]
         retriever = MergerRetriever(retrievers=retrievers)
         return retriever
+    
+# load_retriever(False, False, False)
