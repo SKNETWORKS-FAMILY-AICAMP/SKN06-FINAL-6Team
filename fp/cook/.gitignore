@@ -1,5 +1,0 @@
-.env
-db/
-faiss/
-__pycache__/
-*.db
