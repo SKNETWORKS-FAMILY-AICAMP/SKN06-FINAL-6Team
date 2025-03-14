@@ -10,8 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers import StrOutputParser
-
+from chat.search_agent import search_tavily_recipe, tavily_recipe_search_tool  # Tavily 검색 함수 추가
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,16 +21,26 @@ retriever = load_retriever(False, False, False)
 # 이전 대화 retriever 결과 contents 저장 변수
 contents = []
 
+
+
 def format_docs(docs):
     """retriever 결과 형태 변환 함수"""
     for doc in docs:
         content = {}
         txt = doc.page_content.split(" ||| ")
-        keys = ["name", "ingrdients", "recipe", "category", "info", "intro"][:len(txt)]
+        keys = ["name", "ingredients", "recipe", "category", "info", "intro", "video"][:len(txt)]
         content.update(dict(zip(keys, txt)))
         content.update(doc.metadata)
+
+        # funs 데이터이고 video 값이 비어있다면 Tavily 검색 수행
+        if content.get("_collection_name") == "funs" and not content.get("video"):
+            query = f"{content.get('name')}"
+            video_url = tavily_recipe_search_tool.invoke(query)
+            content["video"] = video_url if video_url != "검색 결과 없음" else ""
+
         contents.append(content)
     return contents
+
 
 
 # 1. llm에 기본 질문/이전 질문의 파생 질문인지 확인하기
@@ -85,7 +94,7 @@ def normal(query):
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
 
-    nchain = {"context": itemgetter("question") | retriever | format_docs, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model | StrOutputParser()
+    nchain = {"context": itemgetter("question") | retriever | format_docs, "question": itemgetter("question"), "history": itemgetter("history")} | prompt_template | model
     # ii. llm에 retrieving 결과 + history 전달
     return nchain
 
@@ -112,11 +121,11 @@ def derived(query):
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
-    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model | StrOutputParser()
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model
     return dchain
 
 def mkch():
-    base_chain = RunnableLambda(lambda x: (lambda chain: chain.invoke({**x, "content": contents if chain == derived else []}))(select_chain(x)))
+    base_chain = RunnableLambda(lambda x: (lambda chain: chain.stream({**x, "content": contents if chain == derived else []}))(select_chain(x)))
     mkchain = RunnableWithMessageHistory(
         base_chain, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
