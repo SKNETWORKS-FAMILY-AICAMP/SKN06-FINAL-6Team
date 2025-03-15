@@ -5,13 +5,13 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from chat.lcel.lcel import mkch
-from chat.utils.memories import mkhisid
+from chat.utils.memories import mkhisid, get_session_history
 from chat.utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from chat.models import Chats, ChatSession
+from chat.models import Chats, ChatSession, HistoryChat
 import markdown
 import re
+import uuid
+from django.shortcuts import get_object_or_404
 
 # Chatbot 인스턴스 생성
 cchain = mkch()
@@ -22,92 +22,101 @@ def chat_view(request):
         request.session["chat_history"] = []
     return render(request, "chat.html", {"chat_history": request.session["chat_history"]})
 
+import json
+from langchain_core.messages import BaseMessage
+
 @csrf_exempt
 def chat_api(request):
     if request.method == "POST":
         try:
             # 사용자 ID 받아오기
-            user_id = request.user.user_id if request.user.is_authenticated else 0
-            chat_history = request.session.get("chat_history", [])
-            max_history = 5  # 최근 5개만 유지 (너무 길어지는 문제 방지)
+            user_id = request.user.user_id if request.user.is_authenticated else None
+            if not user_id:
+                return JsonResponse({"success": False, "error": "로그인이 필요합니다."}, status=403)
 
-            # 텍스트 입력 처리
+            # 기존 세션 조회 또는 생성
+            chat_session = ChatSession.objects.filter(user_id=user_id).order_by("-created_at").first()
+            if not chat_session:
+                chat_session = ChatSession.objects.create(user_id=user_id)
+
+            # 기존 history_id 조회 또는 새로운 UUID 생성
+            history_id = mkhisid(user_id)
+            if not history_id:
+                history_id = str(uuid.uuid4())  # 새로운 UUID 생성
+
+            # 기존 `HistoryChat` 불러오기 (없으면 생성)
+            history_record, created = HistoryChat.objects.get_or_create(
+                user_id=user_id,
+                session=chat_session,
+                defaults={"messages": json.dumps([])}  # 기본 빈 리스트
+            )
+
+            # ✅ 기존 대화 내역 불러오기
+            try:
+                existing_messages = json.loads(history_record.messages)
+            except json.JSONDecodeError:
+                existing_messages = []
+
+            # 입력 값 처리
             text_input = request.POST.get("message", "").strip()
-
-            # 이미지 파일 처리
             detected_ingredients = set()
-            image_path = None  # 기본값 설정
+            image_url = None
 
+            # 이미지 업로드 처리
             if "image" in request.FILES:
                 image_file = request.FILES["image"]
-
-                # `media/uploads/` 폴더가 없으면 생성
                 upload_dir = "media/uploads/"
-                if not os.path.exists(upload_dir):
-                    os.makedirs(upload_dir)
-
+                os.makedirs(upload_dir, exist_ok=True)
                 image_path = os.path.join(upload_dir, image_file.name)
 
-                # 파일 저장 (경로 지정)
                 with open(image_path, "wb") as f:
                     for chunk in image_file.chunks():
                         f.write(chunk)
 
-                # YOLO 감지 수행 (이미지 저장 후 실행)
                 detected_ingredients.update(detect_ingredients(image_path))
+                image_url = f"/media/uploads/{image_file.name}"
 
-            # 감지된 재료 정리 (중복 제거)
-            detected_ingredients = sorted(set(detected_ingredients))
+            # 감지된 재료 정리
+            detected_ingredients = sorted(detected_ingredients)
 
-            # 최근 5개만 유지하여 대화 길이 제한
-            recent_history = chat_history[-max_history:]
-
-            # 이전 감지된 재료가 있으면 최신화
-            previous_ingredients = set()
-            for entry in recent_history:
-                if "detected_ingredients" in entry:
-                    previous_ingredients.update(entry["detected_ingredients"])
-            
-            # 새로운 재료와 기존 재료를 합쳐서 중복 방지
-            all_ingredients = sorted(previous_ingredients.union(detected_ingredients))
-
-            # 최종 Query 구성 (이전 대화 포함하되, 너무 길어지지 않도록 제한)
-            image_url = f"/media/uploads/{image_file.name}" if image_path else None
-            if all_ingredients:
-                query_with_ingredients = f"다음 재료를 사용하여 레시피를 추천해 주세요: {', '.join(all_ingredients)}"
+            # 최종 Query 구성
+            if detected_ingredients:
+                query_with_ingredients = f"{text_input} 감지된 재료: {', '.join(detected_ingredients)}"
             else:
                 query_with_ingredients = text_input
 
-            # AI 응답 생성
-            history_id = mkhisid(user_id)
+            # ✅ AI 응답 생성 (이전 대화 내역을 포함하여 LangChain에 전달)
             response = cchain.invoke(
-                {"question": query_with_ingredients},
+                {"question": query_with_ingredients, "history": existing_messages},
                 config={"configurable": {"user_id": user_id, "history_id": history_id}},
             )
+
             formatted_response = format_markdown(response)
 
-            # 대화 기록 업데이트 (최근 5개만 유지)
-            chat_history.append({
-                "user": text_input,
-                "bot": response,
-                "image": image_url,
-                "detected_ingredients": all_ingredients  # 감지된 재료 포함
-            })
-            chat_history = chat_history[-max_history:]  # 최근 5개 유지
-            request.session["chat_history"] = chat_history  # 세션에 저장
+            # ✅ 기존 대화 내역을 유지하면서 새 메시지 추가
+            existing_messages.append({"role": "human", "content": text_input})  # 사용자 입력 추가
+            existing_messages.append({"role": "ai", "content": formatted_response})  # AI 응답 추가
+
+            existing_messages = existing_messages[-10:]
+            
+            # ✅ 업데이트된 대화 기록을 저장
+            history_record.messages = json.dumps(existing_messages, ensure_ascii=False)
+            history_record.save()
 
             # 응답 반환
             return JsonResponse({
                 "success": True,
                 "message": formatted_response,
-                "chat_history": chat_history,
-                "detected_ingredients": all_ingredients
+                "chat_history": existing_messages,
+                "detected_ingredients": detected_ingredients,
+                "image_url": image_url
             })
 
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
 
 def format_markdown(response):
     """메뉴명만 숫자로 표시하고, 나머지는 일반 텍스트 처리 및 이미지 삽입"""
@@ -138,55 +147,92 @@ def format_markdown(response):
 
     return markdown.markdown("\n".join(formatted_lines), extensions=["extra"])
 
-# 새 채팅 시작 (기존 대화 초기화)
 @login_required
 @csrf_exempt
 def new_chat(request):
-    request.session["chat_history"] = []  # 기존 대화 삭제
-    return JsonResponse({"success": True, "message": "새 채팅이 시작되었습니다.", "chat_history": []})
+    """새로운 채팅을 생성하고 ID 반환"""
+    if request.method == "POST":
+        chat_session = ChatSession.objects.create(user=request.user)
 
+        # ✅ 새로운 세션에 대해 HistoryChat도 생성
+        history = HistoryChat.objects.create(
+            user=request.user,
+            session=chat_session,
+            title="새로운 대화",
+            messages=json.dumps([])  # 빈 메시지 리스트 저장
+        )
+
+        return JsonResponse({
+            "success": True,
+            "chat_id": str(chat_session.session_id),
+            "title": history.title 
+        })
+
+    return JsonResponse({"success": False}, status=400)
 
 @login_required
 def chat_sessions(request):
-    """Retrieve chat session list for user"""
+    """사용자의 모든 채팅 세션을 불러오기"""
     sessions = ChatSession.objects.filter(user=request.user).order_by("-created_at")
-    session_data = []
 
+    session_data = []
     for session in sessions:
-        latest_chat = Chats.objects.filter(session=session).order_by("-created_at").first()
-        summary = latest_chat.question_content[:30] if latest_chat else "No messages"
+        history = HistoryChat.objects.filter(session=session).first()
+        title = history.title if history else "새로운 대화"
+
+        first_chat = Chats.objects.filter(session=session).order_by("created_at").first()
+        summary = first_chat.question_content[:30] if first_chat else "대화 요약 없음"
 
         session_data.append({
             "session_id": str(session.session_id),
+            "title": title,
             "summary": summary,
-            "created_at": session.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": session.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         })
 
-    return JsonResponse({"sessions": session_data})
+    return JsonResponse({"success": True, "sessions": session_data})
 
 @login_required
 def chat_history(request, session_id):
-    """Load specific chat session history"""
+    """특정 세션의 채팅 내역을 불러옴"""
     try:
-        chat_session = ChatSession.objects.get(session_id=session_id, user=request.user)
+        chat_session = ChatSession.objects.get(session_id=session_id)
     except ChatSession.DoesNotExist:
-        return JsonResponse({"error": "Session not found"}, status=404)
+        return JsonResponse({"error": "채팅 세션을 찾을 수 없습니다."}, status=404)
 
-    messages = Chats.objects.filter(session=chat_session).order_by("created_at")
-    message_list = [
-        {"sender": "User", "content": msg.question_content} for msg in messages
-    ] + [
-        {"sender": "AI", "content": msg.response_content} for msg in messages if msg.response_content
-    ]
+    history = HistoryChat.objects.filter(session=chat_session).first()
+    if not history:
+        return JsonResponse({"session_id": session_id, "messages": []})  # ✅ 기록이 없을 경우 빈 리스트 반환
 
-    return JsonResponse({"session_id": session_id, "messages": message_list})
+    try:
+        messages = json.loads(history.messages)  # ✅ JSON 데이터를 리스트로 변환
+    except json.JSONDecodeError:
+        messages = []  # ✅ 데이터 변환 실패 시 빈 리스트 반환
+
+    message_list = []
+    for msg in messages:
+        message_list.append({
+            "content": msg["content"],  # ✅ JSON 형식 그대로 반환
+            "sender": "User" if msg["role"] == "user" else "AI",
+        })
+
+    return JsonResponse({
+        "session_id": session_id,
+        "messages": message_list
+    })
+
 
 @login_required
 def delete_chat(request, session_id):
     """특정 채팅 세션 삭제"""
     try:
-        session = ChatSession.objects.filter(session_id=session_id, user=request.user).first()
+        session = ChatSession.objects.get(session_id=session_id, user=request.user)
+        
+        # ✅ 관련된 모든 데이터 삭제
+        Chats.objects.filter(session=session).delete()
+        HistoryChat.objects.filter(session=session).delete()
         session.delete()
+
         return JsonResponse({"success": True})
     except ChatSession.DoesNotExist:
         return JsonResponse({"success": False, "error": "세션이 존재하지 않습니다."}, status=404)

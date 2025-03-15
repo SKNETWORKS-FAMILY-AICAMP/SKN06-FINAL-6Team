@@ -320,7 +320,9 @@ def mypage(request):
     else:
         form = UserUpdateForm(instance=user)
 
-    return render(request, 'mypage.html', {'form': form, 'user': user})
+    user_photo_url = user.user_photo.url if user.user_photo else "/static/imgs/user.png"
+
+    return render(request, 'mypage.html', {'form': form, 'user': user, 'user_photo_url': user_photo_url})
 
 
 # 회원탈퇴

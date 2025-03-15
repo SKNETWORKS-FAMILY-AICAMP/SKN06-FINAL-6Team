@@ -70,11 +70,37 @@
         }
 
         .bot-message {
-            background-color: #f1f1f1;
+            background-color: #fdfdfdf2;
             color: black;
             align-self: flex-start;
             text-align: left;
             border-bottom-left-radius: 0;
+        }
+
+        .user-message::after {
+            content: "";
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 0 10px 10px;
+            border-color: transparent transparent transparent #007bff;
+            transform: translateY(-50%);
+        }
+
+        .bot-message::after {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 10px 10px 0;
+            border-color: transparent #f1f1f1 transparent transparent;
+            transform: translateY(-50%);
         }
 
         #input-box {
@@ -251,7 +277,6 @@
     </style>
 </head>
 <body>
-
     <div class="header">
         {% if request.user.is_authenticated %}
             <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
@@ -304,7 +329,6 @@
 
     <div id="chat-container">
         <h1>꾸깃꾸깃</h1>
-
         <div id="chat-box"></div>
 
         <form method="POST" id="input-box">
@@ -319,7 +343,127 @@
     </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            loadChatSessions();
+        });
+        
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
+        let currentSessionId = null;
+
+        async function loadChatSessions() {
+            try {
+                let response = await fetch("./sessions/");
+                let data = await response.json();
+                let sessionList = document.getElementById("sessionList");
+                sessionList.innerHTML = "";
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
+                    currentSessionId = null
+                    return;
+                }
+                
+                data.sessions.forEach((session, index) => {
+                    let li = document.createElement("li");
+                    li.innerHTML = `
+                        <span onclick="loadChatHistory('${session.session_id}')">${session.title} (${session.summary})</span>
+                        <button onclick="deleteChat('${session.session_id}')">x</button>
+                    `;
+                    sessionList.appendChild(li);
+
+                    // ✅ 첫 번째 세션을 자동으로 불러옴
+                    if (index === 0) {
+                        currentSessionId = session.session_id;
+                    }                    
+                });
+                
+                if (currentSessionId) {
+                    await loadChatHistory(currentSessionId);
+                }
+            } catch (error) {
+                console.error("세션 목록 불러오기 실패:", error);
+            }
+        }
+
+        // 특정 세션의 대화 내역 불러오기
+        async function startNewChat() {
+            try {
+                const response = await fetch("./new_chat/", {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCsrfToken() }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("새 채팅이 시작되었습니다.");
+
+                    currentSessionId = data.chat_id; 
+                    document.getElementById("chat-box").innerHTML = "";
+                    
+                    loadChatSessions();
+                    loadChatHistory(currentSessionId);
+                } else {
+                    alert("새 채팅을 생성할 수 없습니다.");
+                }
+            } catch (error) {
+                console.error("새 채팅 생성 실패:", error);
+                alert("새 채팅을 생성하는 중 오류가 발생했습니다.");
+            }
+        }
+
+        async function loadChatHistory(sessionId) {
+            try {
+                let response = await fetch(`./history/${sessionId}/`);
+                let data = await response.json();
+                let chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = ""; 
+
+                // if (!data.messages || data.messages.length === 0) {
+                //     chatBox.innerHTML = "<p>이전 대화가 없습니다.</p>";
+                //     return;
+                // }
+
+                currentSessionId = sessionId;
+
+                console.log("📌 서버에서 받은 메시지:", data.messages);
+
+                data.messages.forEach(msg => {
+                    let messageDiv = document.createElement("div");
+                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
+                    messageDiv.classList.add("message", className);
+
+                    // ✅ AI 메시지는 왼쪽 정렬, 사용자 메시지는 오른쪽 정렬
+                    if (msg.sender === "AI") {
+                        messageDiv.style.alignSelf = "flex-start";
+                    } else {
+                        messageDiv.style.alignSelf = "flex-end";
+                    }
+
+                    // ✅ 메시지 내용을 HTML로 변환 (Markdown 변환 포함)
+                    let formattedContent = msg.content
+                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")  // **bold** → <strong>bold</strong>
+                        .replace(/\n/g, "<br>")  // 줄바꿈 처리
+                        .replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" style="width: 200px; height: auto; display: block; margin: 10px auto;">'); // 이미지
+
+                    messageDiv.innerHTML = formattedContent;
+                    chatBox.appendChild(messageDiv);
+                });
+
+                scrollToBottom();
+            } catch (error) {
+                console.error("채팅 내역 불러오기 실패:", error);
+            }
+        }
+
+        let isSending = false;
+
         async function sendMessage() {
+            if (isSending) return;
+            isSending = true;
+
             const messageInput = document.getElementById("message-input");
             const imageInput = document.getElementById("imageInput");
             const chatBox = document.getElementById("chat-box");
@@ -329,6 +473,7 @@
 
             if (!message && !imageFile) {
                 alert("메시지 또는 이미지를 입력하세요.");
+                isSending = false;
                 return;
             }
 
@@ -336,42 +481,60 @@
             formData.append("message", message);
             if (imageFile) formData.append("image", imageFile);
 
-            //사용자 메시지 추가
-            if (message) {
-                chatBox.innerHTML += `<div class="message user-message">${message}</div>`;
+            if (!currentSessionId) {
+                alert("세션이 없습니다. 새 채팅을 시작하세요.");
+                isSending = false;
+                return;
             }
 
-            // 사용자가 보낸 이미지 미리보기 추가
+            // ✅ 사용자 메시지를 오른쪽 정렬로 표시
+            if (message) {
+                let userDiv = document.createElement("div");
+                userDiv.classList.add("message", "user-message");
+                userDiv.style.alignSelf = "flex-end";
+                userDiv.innerHTML = message;
+                chatBox.appendChild(userDiv);
+            }
+
             if (imageFile) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    chatBox.innerHTML += `<div class="message user-message"><img src="${e.target.result}" width="100"></div>`;
+                    let userImgDiv = document.createElement("div");
+                    userImgDiv.classList.add("message", "user-message");
+                    userImgDiv.style.alignSelf = "flex-end";
+                    userImgDiv.innerHTML = `<img src="${e.target.result}" width="100">`;
+                    chatBox.appendChild(userImgDiv);
                 };
                 reader.readAsDataURL(imageFile);
             }
-            // 메시지 입력창 초기화
+
             messageInput.value = "";
             imageInput.value = "";
             document.getElementById("imagePreview").style.display = "none";
 
-            // 서버에 메세지 전송
             try {
-                // 서버로 메시지 전송
-                const response = await fetch("{% url 'chat_api' %}", {
+                const response = await fetch("./chat_api/", {
                     method: "POST",
                     body: formData,
-                    headers: {
-                        "X-CSRFToken": "{{ csrf_token }}"
-                    }
+                    headers: { "X-CSRFToken": getCsrfToken() }
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    chatBox.innerHTML += `<div class="message bot-message">${data.message}</div>`;
-                    
-                    if (data.image_path) {
-                        chatBox.innerHTML += `<div class="message bot-message"><img src="${data.image_path}" width="100"></div>`;
+                    // ✅ AI 응답을 왼쪽 정렬로 표시
+                    let aiDiv = document.createElement("div");
+                    aiDiv.classList.add("message", "bot-message");
+                    aiDiv.style.alignSelf = "flex-start";
+                    aiDiv.innerHTML = data.message;
+                    chatBox.appendChild(aiDiv);
+
+                    if (data.image_url) {
+                        let aiImgDiv = document.createElement("div");
+                        aiImgDiv.classList.add("message", "bot-message");
+                        aiImgDiv.style.alignSelf = "flex-start";
+                        aiImgDiv.innerHTML = `<img src="${data.image_url}" width="100">`;
+                        chatBox.appendChild(aiImgDiv);
                     }
                 } else {
                     alert("오류 발생: " + data.error);
@@ -379,7 +542,30 @@
             } catch (error) {
                 console.error("메시지 전송 오류:", error);
             }
-            chatBox.scrollTop = chatBox.scrollHeight;
+
+            isSending = false;
+            scrollToBottom();
+        }
+
+        async function deleteChat(sessionId) {
+            if (!confirm("정말 삭제하시겠습니까?")) return;
+
+            try {
+                let response = await fetch(`./delete/${sessionId}/`, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": getCsrfToken() }
+                });
+
+                let data = await response.json();
+                if (data.success) {
+                    alert("채팅이 삭제되었습니다.");
+                    loadChatSessions();
+                } else {
+                    alert("삭제 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("채팅 삭제 실패:", error);
+            }
         }
 
         function previewImage() {
@@ -396,19 +582,6 @@
                 reader.readAsDataURL(file);
             } else {
                 imagePreview.style.display = "none";
-            }
-        }
-
-        async function startNewChat() {
-            const response = await fetch("{% url 'new_chat' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert("새 채팅이 시작되었습니다.");
-                document.getElementById("chat-box").innerHTML = "";
             }
         }
 
@@ -432,7 +605,6 @@
             }
         });
 
-
         function openModal() {
             document.getElementById('myModal').style.display = 'block';
         }
@@ -441,41 +613,13 @@
             document.getElementById('myModal').style.display = 'none';
         }
 
-        async function loadChatSessions() {
-            let response = await fetch("{% url 'chat_sessions' %}");
-            let data = await response.json();
-            let sessionList = document.getElementById("sessionList");
-            sessionList.innerHTML = "";
-
-            if (!data.sessions.length) {
-                sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
-                return;
-            }
-
-            data.sessions.forEach(session => {
-                let li = document.createElement("li");
-                li.innerHTML = `<span onclick="loadChatHistory('${session.session_id}')">${session.summary}</span>`;
-                sessionList.appendChild(li);
-            });
-        }
-
-        async function loadChatHistory(sessionId) {
-            let response = await fetch(`/history/${sessionId}/`);
-            let data = await response.json();
+        
+        function scrollToBottom() {
             let chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML = "";
-
-            if (!data.messages.length) {
-                chatBox.innerHTML = "<p>이전 대화가 없습니다.</p>";
-                return;
-            }
-
-            data.messages.forEach(msg => {
-                let className = msg.sender === "AI" ? "bot-message" : "user-message";
-                chatBox.innerHTML += `<div class="message ${className}">${msg.content}</div>`;
-            });
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
-
+        
+        // 음성 인식
         function startSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {

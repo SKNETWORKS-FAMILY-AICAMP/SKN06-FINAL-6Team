@@ -218,7 +218,7 @@
             {% if user.user_photo %}
                 <img id="profile-image" src="{{ user.user_photo.url }}" alt="프로필 사진">
             {% else %}
-                <img id="profile-image" src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진">
+                <img id="profile-image" src="{{ user_photo_url }}" alt="프로필 사진">
             {% endif %}
         </div>
 
@@ -244,7 +244,7 @@
         <input type="file" name="user_photo" id="id_user_photo" accept="image/*" onchange="previewImage(event)">
 
         <!-- 기존 프로필 이미지 유지 -->
-        <input type="hidden" name="existing_user_photo" value="{{ user.user_photo.url }}">
+        <input type="hidden" name="existing_user_photo" value="{{ user_photo_url }}">
 
         <div class="form-group-row">
             <div class="form-group">
