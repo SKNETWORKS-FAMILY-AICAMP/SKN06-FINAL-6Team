@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS 확인용</title>
+    <link rel="stylesheet" href="signup.css">
+</head>
+<body>
+    <div class="container">
+        <h2>회원가입</h2>
+        <div class="logo">
+            <img src="./static/img/logo.png" alt="로고">
+        </div>
+        <div class="profile">
+            <img class="profile-img"src="./static/img/user.png" alt="프로필 사진">
+            <img class="camera-img" src="./static/img/camera.png" alt="카메라 사진">
+        </div>
+        <div class="input-group">
+            <input type="text" placeholder="아이디">
+        </div>
+        <div class="input-group">
+            <input type="password" placeholder="비밀번호">
+            <img src="./static/img/noeye.png" alt="비밀번호 표시" 
+                 class="toggle-password" 
+                 onmousedown="showPassword('password', this)" 
+                 onmouseup="hidePassword('password', this)" 
+                 onmouseleave="hidePassword('password', this)">
+        </div>
+        
+        <div class="input-group">
+            <input type="password" placeholder="비밀번호 확인">
+            <img src="static/img/noeye.png" alt="비밀번호 확인 표시" 
+                 class="toggle-password" 
+                 onmousedown="showPassword('confirm-password', this)" 
+                 onmouseup="hidePassword('confirm-password', this)" 
+                 onmouseleave="hidePassword('confirm-password', this)">
+        </div>
+        
+        <div class="input-group">
+            <input type="email" placeholder="이메일">
+        </div>
+        <div class="input-group">
+            <input type="text" placeholder="이름">
+        </div>
+        <div class="input-group">
+            <input type="date" placeholder="생년월일">
+        </div>
+        <div class="input-group">
+            <input type="text" placeholder="별명">
+        </div>
+
+        <!-- 가입하기 버튼을 별명 입력창의 오른쪽 아래 배치 -->
+        <div class="button-container">
+            <button class="signup-btn">가입하기</button>
+        </div>
+    </div>
+</body>
+</html>

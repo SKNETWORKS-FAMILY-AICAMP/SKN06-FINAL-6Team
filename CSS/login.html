@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS 확인용</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="logo">
+        <img src="./static/img/logo.png" alt="로고">
+    </div>
+
+    <div class="container">
+        <h2>로그인</h2>
+        <div class="input-group">
+            <input type="text" placeholder="아이디">
+        </div>
+        <div class="input-group">
+            <input type="password" placeholder="비밀번호">
+            <img src="./static/img/noeye.png" alt="비밀번호 표시" 
+                 class="toggle-password" 
+                 onmousedown="showPassword('password', this)" 
+                 onmouseup="hidePassword('password', this)" 
+                 onmouseleave="hidePassword('password', this)">
+        </div>
+        <div class="button-container">
+            <button class="login-btn">Sign in</button>
+        </div>
+        <!-- 아이디/비밀번호 찾기 & 회원가입 -->
+        <div class="links">
+            <a href="#">아이디 / 비밀번호 찾기</a>
+            <a href="#">회원가입</a>
+        </div>
+
+        <!-- OR 구분선 -->
+        <div class="separator">
+            <span>OR</span>
+        </div>
+
+        <!-- 카카오 로그인 버튼 -->
+        <div class="kakao-btn">
+            <img src="./static/img/kakao.png" alt="카카오톡 로그인">
+        </div>
+    </div>
+</body>
+</html>
