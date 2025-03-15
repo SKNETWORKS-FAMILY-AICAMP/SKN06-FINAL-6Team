@@ -175,13 +175,13 @@
 >
 
 ## 와이어프레임
-
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%EC%99%80%EC%9D%B4%EC%96%B4%ED%94%84%EB%A0%88%EC%9E%84.png)
 ## DB설계 
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/DB%20Table.png)
+## 화면 설계
+|home화면|채팅화면|
+|---|---|
 
-## Streamlit
-
-
-![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-2nd-4Team/blob/main/report/%EC%8A%A4%ED%8A%B8%EB%A6%BC%EB%A6%BF%20%EC%8B%A4%ED%96%89%20%ED%99%94%EB%A9%B4.png)
 
 ## 팀원 회고
 김동훈
