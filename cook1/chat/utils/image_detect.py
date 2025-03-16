@@ -9,13 +9,17 @@ import re
 
 # ✅ YOLO 및 CLIP 모델 로드
 device = "cpu"
-BASE_DIR = os.getcwd()
+
+YOLO_FOOD_MODEL_PATH = r"C:\Users\Playdata\Desktop\COOK1\chat\runs\detect\train_식재료\weights\best.pt"
+YOLO_FRIDGE_MODEL_PATH = r"C:\Users\Playdata\Desktop\COOK1\chat\runs\detect\train_냉장고\weights\best.pt"
+
 # YOLO 모델 로드
-yolo_model_food = YOLO(os.path.join(BASE_DIR,"chat","runs","detect","train_식재료","weights","best.pt"))
-yolo_model_fridge = YOLO(os.path.join(BASE_DIR,"chat","runs","detect","train_냉장고","weights","best.pt"))
+yolo_model_food = YOLO(YOLO_FOOD_MODEL_PATH)
+yolo_model_fridge = YOLO(YOLO_FRIDGE_MODEL_PATH)
 
 # CLIP 모델 로드
 clip_model, preprocess = clip.load("ViT-B/32", device=device)
+
 
 # ✅ YOLO 감지 클래스 한글 변환 딕셔너리
 food_classes = {
