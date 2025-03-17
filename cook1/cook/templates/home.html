@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>home</title>
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+
+<body>
+    <div class="header">
+        {% if user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}">
+                <button class="sign-in-btn">Sign in</button>
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <!-- 왼쪽 배경 영역 -->
+        <div class="left-section" style="background-image: url('{% static "imgs/back.png" %}');">
+            <a href="{% url 'home' %}">
+                <img src="{% static 'imgs/homelogo.png' %}" alt="꾸깃꾸깃 로고" class="logo">
+            </a>
+            <div class="description">
+                오늘은 뭐 먹지? <br>
+                고민은 꾸깃꾸깃에게 맡기고, <br>
+                맛있는 한 끼를 만나보세요!
+            </div>            
+            <a href="{% url 'chat' %}">
+                <button class="chat-btn">대화하기 →</button>
+            </a>
+            
+        </div>
+
+        <!-- 오른쪽 콘텐츠 영역 -->
+        <div class="right-section">
+            <!-- 영상 공간 -->
+            <div class="video-container">
+                <video controls>
+                    <source src="static/video/demo.mp4" type="video/mp4">
+                    지원되지 않는 브라우저입니다.
+                </video>
+            </div>
+        
+            <!-- 슬라이드 표시 (동그라미) -->
+            <div class="dots">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>🍪 쿠키 안내</h2>
+            {% if user.is_authenticated %}
+                <p>현재 보유 중인 쿠키: <strong>{{ user.points|default:"0" }}개</strong></p>
+                <ul>
+                    <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                    <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                    <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                    <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                </ul>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function toggleDropdown() {
+            document.getElementById('dropdown-menu').classList.toggle('show');
+        }
+
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
