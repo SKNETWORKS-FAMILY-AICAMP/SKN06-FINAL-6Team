@@ -3,167 +3,104 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>회원가입</title>
-    <style>
-        /* 전체 페이지 스타일 */
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f5f5f5;
-            margin: 0;
-            position: relative;
-        }
-
-        /* ✅ 로고 스타일 - 화면의 왼쪽 상단 끝으로 이동 */
-        .logo {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 60px;
-            height: auto;
-            cursor: pointer;
-        }
-
-        /* 회원가입 컨테이너 */
-        .signup-container {
-            width: 450px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 제목 스타일 */
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        /* 입력 필드 스타일 */
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-align: left;
-        }
-
-        input, button[type="submit"] {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        /* 비밀번호 입력창과 아이콘을 나란히 배치 */
-        .password-container {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .password-container input {
-            flex: 1;
-        }
-
-        .password-toggle {
-            border: none;
-            background: none;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        /* 프로필 사진 업로드 */
-        input[type="file"] {
-            border: none;
-            margin-bottom: 10px;
-        }
-
-        /* 회원가입 버튼 */
-        button[type="submit"] {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button[type="submit"]:hover {
-            background-color: #0056b3;
-        }
-
-        /* 입력창 포커스 효과 */
-        input:focus {
-            border-color: #007bff;
-            outline: none;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/signup.css' %}">
 </head>
-
 <body>
-
-    <!--  로고 - 화면 왼쪽 상단 끝으로 이동 -->
-    <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
-
-    <div class="signup-container">
+    <div class="container">
         <h2>회원가입</h2>
-
+        <div class="logo">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
+        </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
+        
+            <!-- 프로필 사진 업로드 -->
+            <!-- 프로필 사진 업로드 -->
+        <div class="profile">
+            <!-- 기존 프로필 사진을 불러오고, 없으면 기본 이미지 표시 -->
+            <img id="profile-preview" class="profile-img"
+                src="{% if form.instance.user_photo %}{{ form.instance.user_photo.url }}{% else %}{% static 'imgs/user.png' %}{% endif %}"
+                alt="프로필 사진">
+            <img class="camera-img" src="{% static 'imgs/camera.png' %}" alt="카메라 사진" onclick="triggerFileInput()">
+        </div>
 
-            <label for="id_login_id">로그인 ID</label>
-            {{ form.login_id }}
+<!-- Django 폼의 파일 업로드 필드 (숨김 처리) -->
+<div style="display: none;">
+    {{ form.user_photo }}
+</div>
 
-            <label for="id_password1">비밀번호</label>
-            <div class="password-container">
+            <div class="input-group">
+                {{ form.login_id }}
+            </div>
+
+            <div class="input-group">
                 {{ form.password1 }}
-                <button type="button" class="password-toggle"
-                        onmousedown="showPassword('id_password1')" 
-                        onmouseup="hidePassword('id_password1')" 
-                        onmouseleave="hidePassword('id_password1')">🔒</button>
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 표시"
+                     class="toggle-password" 
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)"
+                     onmouseleave="hidePassword(this)">
             </div>
-
-            <label for="id_password2">비밀번호 확인</label>
-            <div class="password-container">
+            
+            <div class="input-group">
                 {{ form.password2 }}
-                <button type="button" class="password-toggle"
-                        onmousedown="showPassword('id_password2')" 
-                        onmouseup="hidePassword('id_password2')" 
-                        onmouseleave="hidePassword('id_password2')">🔒</button>
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 확인 표시"
+                     class="toggle-password" 
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)"
+                     onmouseleave="hidePassword(this)">
+            </div>
+            
+            
+
+            <div class="input-group">
+                {{ form.email }}
             </div>
 
-            <label for="id_email">이메일</label>
-            {{ form.email }}
+            <div class="input-group">
+                {{ form.name }}
+            </div>
+            <div class="input-group">
+                {{ form.birthday }}
+            </div>
+            
+            <div class="input-group">
+                {{form.nickname}}
+            </div>
 
-            <label for="id_name">이름</label>
-            {{ form.name }}
-
-            <label for="id_nickname">별명</label>
-            {{ form.nickname }}
-
-            <label for="id_birthday">생년월일</label>
-            {{ form.birthday }}
-
-            <label for="id_user_photo">프로필 사진 (선택 사항)</label>
-            {{ form.user_photo }}
-
-            <button type="submit">가입하기</button>
+            <div class="button-container">
+                <button class="signup-btn">가입하기</button>
+            </div>
         </form>
     </div>
 
     <script>
-        // 비밀번호 표시 기능
-        function showPassword(fieldId) {
-            document.getElementById(fieldId).type = "text";
+        function showPassword(toggleButton) {
+            var passwordInput = toggleButton.previousElementSibling; // 비밀번호 입력 필드 찾기
+            passwordInput.type = "text"; // 비밀번호 보이기
+            toggleButton.src = "{% static 'imgs/eye.png' %}"; // 아이콘 변경
         }
 
-        function hidePassword(fieldId) {
-            document.getElementById(fieldId).type = "password";
+        function hidePassword(toggleButton) {
+            var passwordInput = toggleButton.previousElementSibling; // 비밀번호 입력 필드 찾기
+            passwordInput.type = "password"; // 비밀번호 숨기기
+            toggleButton.src = "{% static 'imgs/noeye.png' %}"; // 아이콘 원래대로
+        }
+
+
+        function triggerFileInput() {
+            document.getElementById('id_user_photo').click();
+        }
+
+        function previewProfile(event) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                var output = document.getElementById('profile-preview');
+                output.src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
         }
     </script>
 

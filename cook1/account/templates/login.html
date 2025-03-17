@@ -3,146 +3,54 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>로그인 페이지</title>
-    <style>
-        /* 전체 페이지 스타일 */
-        body {
-            font-family: Arial, sans-serif;
-            position: relative;
-            margin: 0;
-            padding: 0;
-        }
-
-        /* 로고 스타일 - 왼쪽 상단 끝에 위치 */
-        .logo {
-            position: absolute;
-            top: 0px;
-            left: 20px;
-            width: 60px;
-            height: auto;
-            cursor: pointer;
-        }
-
-        /* 로그인 폼 스타일 */
-        .login-container {
-            width: 350px;
-            margin: 100px auto;  /* ✅ 로고와 겹치지 않게 마진 추가 */
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            background-color: white;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            text-align: left;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        /* 버튼 스타일 */
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        /* 추가 버튼 스타일 */
-        .extra-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 15px;
-        }
-
-        .extra-buttons a {
-            display: block;
-            padding: 10px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: bold;
-            color: white;
-            transition: background-color 0.3s;
-        }
-
-        /* 개별 버튼 색상 */
-        .btn-find-id { background-color: #6c757d; }
-        .btn-find-id:hover { background-color: #5a6268; }
-
-        .btn-find-pw { background-color: #17a2b8; }
-        .btn-find-pw:hover { background-color: #138496; }
-
-        .btn-signup { background-color: #28a745; }
-        .btn-signup:hover { background-color: #218838; }
-
-        /* 카카오 로그인 버튼 */
-        .kakao-login {
-            margin-top: 20px;
-        }
-
-        .kakao-login img {
-            width: 250px;
-            height: auto;
-            cursor: pointer;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
 </head>
-
 <body>
     <!-- 왼쪽 상단의 로고 -->
-    <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
-
-    <div class="login-container">
+    <div class="logo">
+        <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
+    </div>
+    
+    <div class="container">
         <h1>로그인</h1>
 
         <form method="post" action="{% url 'login' %}">
             {% csrf_token %}
 
-            <label for="id_login_id">아이디:</label>
-            <input type="text" name="login_id" required>
+            <div class="input-group">
+                <input type="text" name="login_id" placeholder="아이디" required>
+            </div>
 
-            <label for="id_password">비밀번호:</label>
-            <input type="password" name="password" required>
+            <div class="input-group">
+                <input type="password" name="password" placeholder="비밀번호" required>
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 표시" 
+                     class="toggle-password"
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)" 
+                     onmouseleave="hidePassword(this)">
+            </div>
 
-            <button type="submit">로그인</button>
+            <!-- 로그인 버튼 -->
+            <div class="button-container">
+                <button type="submit" class="login-btn">Sign in</button>
+            </div>
 
             <!-- 아이디 찾기, 비밀번호 찾기, 회원가입 버튼 -->
-            <div class="extra-buttons">
-                <a href="{% url 'find_id' %}" class="btn-find-id">아이디 찾기</a>
-                <a href="{% url 'find_pw' %}" class="btn-find-pw">비밀번호 찾기</a>
-                <a href="{% url 'signup' %}" class="btn-signup">회원가입</a>
+            <div class="links">
+                <a href="{% url 'find_id' %}">아이디 찾기</a>
+                <a href="{% url 'find_pw' %}">비밀번호 찾기</a>
+                <a href="{% url 'signup' %}">회원가입</a>
+            </div>
+
+            <div class="separator">
+                <span>OR</span>
             </div>
         </form>
 
-        <hr>
 
-        <div class="kakao-login">
+        <div class="kakao-btn">
             {% if request.user.is_authenticated and request.session.kakao_id %}
                 <p>환영합니다, {{ request.session.kakao_nickname }}님!</p>
                 <a href="{% url 'kakao_logout' %}">
@@ -155,5 +63,18 @@
             {% endif %}
         </div>
     </div>
+    <script>
+        function showPassword(button) {
+            var input = button.previousElementSibling;
+            input.type = "text";
+            button.src = "{% static 'imgs/eye.png' %}";
+        }
+
+        function hidePassword(button) {
+            var input = button.previousElementSibling;
+            input.type = "password";
+            button.src = "{% static 'imgs/noeye.png' %}";
+        }
+    </script>
 </body>
 </html>

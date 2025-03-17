@@ -5,17 +5,19 @@ from django.contrib.auth.hashers import make_password
 
 class CustomUserCreationForm(forms.ModelForm):
     """회원가입 폼 (Users 모델 기반)"""
-    login_id = forms.CharField(max_length=50, required=True, label="로그인 ID")
-    email = forms.EmailField(required=True, label="이메일")
-    name = forms.CharField(max_length=50, required=True, label="이름")
-    nickname = forms.CharField(max_length=30, required=True, label="별명")
-    birthday = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={'type': 'date'}))
+    login_id = forms.CharField(max_length=50, required=True, label="로그인 ID",
+        widget=forms.TextInput(attrs={"placeholder": "아이디"}))
+    email = forms.EmailField(required=True, label="이메일", widget=forms.EmailInput(attrs={"placeholder": "이메일"}))
+    name = forms.CharField(max_length=50, required=True, label="이름", widget=forms.TextInput(attrs={"placeholder": "이름"}))
+    nickname = forms.CharField(max_length=30, required=True, label="별명", 
+        widget=forms.TextInput(attrs={"placeholder": "별명"}))
+    birthday = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={"type": "date", "placeholder": "생년월일 선택"}))
     user_photo = forms.ImageField(required=False, label="프로필 사진")
 
     # ✅ Users 모델에는 없지만, 폼에서만 사용할 필드
     password1 = forms.CharField(
         label="비밀번호",
-        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호 입력"}),
+        widget=forms.PasswordInput(attrs={"placeholder": "비밀번호"}),
         required=True
     )
     password2 = forms.CharField(
@@ -26,7 +28,7 @@ class CustomUserCreationForm(forms.ModelForm):
 
     class Meta:
         model = Users
-        fields = ("login_id", "email", "name", "nickname", "birthday", "user_photo")  # ✅ `password1`, `password2` 제거
+        fields = ("login_id", "email", "name", "nickname", "birthday", "user_photo")  # ✅ password1, password2 제거
 
     def clean(self):
         """비밀번호 확인 로직 추가"""
