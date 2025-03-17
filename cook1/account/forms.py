@@ -49,14 +49,14 @@ class CustomUserCreationForm(forms.ModelForm):
 
 # 아이디 찾기 폼
 class FindIDForm(forms.Form):
-    name = forms.CharField(label="이름", max_length=100)
-    email = forms.EmailField(label="이메일")
+    name = forms.CharField(label="이름", max_length=100, widget=forms.TextInput(attrs={"placeholder": "이름"}))
+    email = forms.EmailField(label="이메일", widget=forms.EmailInput(attrs={"placeholder": "이메일"}))
 
 # 비밀번호 찾기 폼
 class FindPWForm(forms.Form):
-    login_id = forms.CharField(label="아이디", max_length=150)
-    name = forms.CharField(label="이름", max_length=100)
-    email = forms.EmailField(label="이메일")
+    login_id = forms.CharField(label="아이디", max_length=150, widget=forms.TextInput(attrs={"placeholder": "아이디"}))
+    name = forms.CharField(label="이름", max_length=100, widget=forms.TextInput(attrs={"placeholder": "이름"}))
+    email = forms.EmailField(label="이메일", widget=forms.EmailInput(attrs={"placeholder": "이메일"}))
 
 # 정보 수정 폼
 class UserUpdateForm(forms.ModelForm):
@@ -87,7 +87,7 @@ class EmailVerificationForm(forms.Form):
 class PasswordResetForm(forms.Form):
     password = forms.CharField(
         label="새 비밀번호",
-        widget=forms.PasswordInput(attrs={"placeholder": "새 비밀번호 입력"}),
+        widget=forms.PasswordInput(attrs={"placeholder": "새 비밀번호"}),
         required=True
     )
     confirm_password = forms.CharField(

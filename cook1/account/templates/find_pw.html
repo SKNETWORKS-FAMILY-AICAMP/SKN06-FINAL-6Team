@@ -1,173 +1,66 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>비밀번호 찾기</title>
-    <style>
-        /* 기본 스타일 */
-        body {
-            font-family: Arial, sans-serif;
-            width: 400px;
-            margin: 100px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        h2 {
-            margin-bottom: 20px;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        label {
-            display: block;
-            margin-top: 10px;
-            font-weight: bold;
-            text-align: left;
-            width: 100%;
-        }
-
-        .input-group {
-            display: flex;
-            align-items: center;
-            width: 100%;
-        }
-
-        input {
-            flex: 1;
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        .btn-small {
-            padding: 8px;
-            margin-left: 5px;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .btn-small:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-large {
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .btn-large:hover {
-            background-color: #0056b3;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .message {
-            color: red;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-    </style>
-
+    <link rel="stylesheet" href="{% static 'css/find_pw.css' %}">
+</head>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             // 인증번호 입력창을 표시할지 확인
-            let verificationSection = document.getElementById("verification-section");
-            let resetPasswordSection = document.getElementById("reset-password-section");
-
             {% if request.session.show_verification %}
-                verificationSection.classList.remove("hidden");  // 인증번호 입력창 표시
+                document.getElementById("verification-section").classList.remove("hidden");
             {% endif %}
 
             // 비밀번호 재설정 폼을 표시할지 확인
             {% if request.session.is_verified %}
-                verificationSection.classList.add("hidden");
-                resetPasswordSection.classList.remove("hidden");
+                document.getElementById("verification-section").classList.add("hidden");
+                document.getElementById("reset-password-section").classList.remove("hidden");
             {% endif %}
         });
     </script>
 </head>
 
 <body>
+    <div class="logo">
+        <a href="{% url 'home' %}">
+            <img src="{% static 'imgs/logo.png' %}" alt="로고">
+        </a>
+    </div>
+    <div class="container">
+        <h2>비밀번호 찾기</h2>
+        <a href="{% url 'login' %}">
+            <button class="close-btn">✖</button>
+        </a>
 
-    <h2>비밀번호 찾기</h2>
-
-    <!-- 1. 비밀번호 찾기 폼 -->
+    <!-- ✅ 1. 비밀번호 찾기 폼 -->
     <form id="find-pw-form" method="post" action="{% url 'find_pw' %}">
         {% csrf_token %}
-
-        <label>아이디:</label>
-        <input type="text" name="login_id" required value="{{ request.POST.login_id|default_if_none:'' }}">
-
-        <label>이름:</label>
-        <input type="text" name="name" required value="{{ request.POST.name|default_if_none:'' }}">
-
-        <label>이메일:</label>
         <div class="input-group">
-            <input type="email" name="email" required value="{{ request.POST.email|default_if_none:'' }}">
-            <button type="submit" class="btn-small">인증번호 받기</button>
+            <input type="text" placeholder="이름" name="name" required value="{{ request.POST.name|default_if_none:'' }}">
+        </div>
+        <div class="input-group">
+            <input type="text" placeholder="아이디" name="login_id" required value="{{ request.POST.login_id|default_if_none:'' }}">
+        </div>
+        <div class="verify-group">
+            <input type="email" placeholder="이메일" name="email" required value="{{ request.POST.email|default_if_none:'' }}" class="email-input">
+            <button class="verify-btn">인증번호 받기</button>
         </div>
     </form>
 
-    <!-- 2. 인증번호 입력 필드 -->
-    <div id="verification-section" class="{% if not request.session.show_verification %}hidden{% endif %}">
-        {% if request.session.show_verification %}
-            <form method="post" action="{% url 'verify_otp' %}">
-                {% csrf_token %}
-                <label>인증번호 입력:</label>
-                <input type="text" name="code" required>
-
-                <button type="submit" class="btn-large">인증하기</button>
-            </form>
-        </div>
-        
-        {% endif %}
-
-        {% if messages %}
-            <div class="message">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-    <!-- 3. 비밀번호 변경 폼 -->
-    <div id="reset-password-section" class="hidden">
-        <form method="post" action="{% url 'reset_password' %}">
+    <!-- ✅ 2. 인증번호 입력 필드 -->
+    <div id="verification-section" class="hidden">
+        <form method="post" action="{% url 'verify_otp' %}">
             {% csrf_token %}
-            <label>새 비밀번호:</label>
-            <input type="password" name="password" required>
-
-            <label>비밀번호 확인:</label>
-            <input type="password" name="password_confirm" required>
-
-            <button type="submit" class="btn-large">비밀번호 변경</button>
+            <div class="input-group">
+                <input type="text" placeholder="인증번호 6자리(제한 시간 6분)" name="code" required>
+            </div>
+            <div class="button-container">
+                <button class="next-btn">Next →</button>
+            </div>
         </form>
     </div>
-
 </body>
 </html>

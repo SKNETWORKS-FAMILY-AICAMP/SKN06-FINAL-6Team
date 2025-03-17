@@ -1,24 +1,52 @@
-{% extends "base.html" %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>home</title>
+    <link rel="stylesheet" href="{% static 'css/find_id.css' %}">
+</head>
+<body>
+    <div class="logo">
+        <a href="{% url 'home' %}">
+            <img src="{% static 'imgs/logo.png' %}" alt="로고">
+        </a>
+    </div>
 
-{% block content %}
-    <h2>아이디 찾기</h2>
-
-    {% if login_id %}
-        <p>회원님의 아이디는 <strong>{{ login_id }}</strong>입니다.</p>
-        <a href="{% url 'login' %}">로그인하기</a>
-    {% else %}
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">아이디 찾기</button>
-        </form>
-
-        {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <p class="{{ message.tags }}">{{ message }}</p>
-                {% endfor %}
+    {% block content %}
+    <div class="container">
+        <h2>아이디 찾기</h2>
+        <a href="{% url 'login' %}">
+            <button class="close-btn">✖</button>
+        </a>
+        {% if login_id %}
+            <p>회원님의 아이디는 <strong>{{ login_id }}</strong>입니다.</p>
+            <div class="button-container">
+                <a href="{% url 'login' %}">
+                    <button class="next-btn">Sign in</button>
+                </a>
             </div>
+            <div class="button-container"></div>
+                <a href="{% url 'find_pw' %}">
+                    <button class="next-btn">비밀번호 찾기</button>
+                </a>
+            </div>
+        {% else %}
+            <form method="POST">
+                {% csrf_token %}
+                <div class="input-group">
+                    {{form.name}}
+                </div>
+                <div class="input-group">
+                    {{form.email}}
+                </div>
+                <div class="button-container">
+                    <button class="next-btn">Next</button>
+                </div>
+            </form>
         {% endif %}
-    {% endif %}
-{% endblock %}
+    </div>
+    {% endblock %}
+</body>
+</html>
