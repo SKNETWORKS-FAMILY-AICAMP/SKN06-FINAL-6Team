@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>{{ review.selected_menu.menu_name }}</h2>
+    <p><strong>작성자:</strong> 
+        {{ review.user.nickname }} (
+        {{ review.user.username|slice:":3" }}
+        {% if review.user.username|length > 3 %}
+            {% with remaining=review.user.username|length|add:"-3" %}
+                {% for _ in "x"|ljust:remaining %}*{% endfor %}
+            {% endwith %}
+        {% endif %}
+        )
+    </p>
+
+    <p><strong>별점:</strong> <span class="star-display">★</span> {{ review.rating }}</p>
+    <p><strong>조회수:</strong> {{ review.views }}</p>
+    <p>{{ review.review_text }}</p>
+
+    <!-- 첫 번째 사진 + 추가 사진 개수 표시 -->
+    {% with review.reviewimages_set.all as images %}
+        {% if images %}
+            <div class="review-images">
+                <div class="main-image">
+                    <img src="{{ images.0.image_url }}" alt="리뷰 이미지" class="review-image">
+                    {% if images|length > 1 %}
+                        <span class="image-count" onclick="openGallery()">+{{ images|length|add:"-1" }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- 갤러리 모달 -->
+    <div id="image-gallery" class="gallery-modal">
+        <span class="close" onclick="closeGallery()">&times;</span>
+        <div class="gallery-wrapper">
+            {% for image in review.reviewimages_set.all %}
+                <img src="{{ image.image_url }}" class="gallery-image" onclick="openFullScreen({{ forloop.counter0 }})">
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 좋아요 버튼 -->
+    <button id="like-btn" onclick="toggleLike()">
+        👍 좋아요 (<span id="like-count">{{ ReviewComments.objects.filter(review=review, like_type='review_like').count }}</span>)
+    </button>
+
+    <!-- 댓글 입력 폼 -->
+    <h3>댓글</h3>
+    <form method="POST" action="{% url 'add_comment' review.pk %}">
+        {% csrf_token %}
+        <textarea name="content" placeholder="댓글을 입력하세요..." required></textarea>
+        <button type="submit">댓글 작성</button>
+    </form>
+    
+    <!-- 댓글 목록 -->
+    <ul id="comment-list">
+        {% for comment in review.reviewcomments_set.all %}
+            <li id="comment-{{ comment.id }}">
+                <strong>{{ comment.user.nickname }}</strong>: {{ comment.comment_text }}
+    
+                {% if request.user == comment.user %}  
+                    <form method="POST" action="{% url 'delete_comment' comment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit">❌</button>
+                    </form>
+                {% endif %}
+            
+                <!-- 대댓글 입력 -->
+                <form method="POST" action="{% url 'add_reply' comment.id %}" style="margin-left: 20px; margin-top: 5px;">
+                    {% csrf_token %}
+                    <textarea name="content" placeholder="답글을 입력하세요..." required></textarea>
+                    <button type="submit">답글 작성</button>
+                </form>
+
+                <!-- 대댓글 목록 -->
+                <ul style="margin-left: 40px;">
+                    {% for reply in comment.reviewcomments_set.all %}
+                        <li id="reply-{{ reply.id }}">
+                            <strong>{{ reply.user.nickname }}</strong>: {{ reply.comment_text }}
+                            
+                            {% if request.user == reply.user %}
+                                <form method="POST" action="{% url 'delete_reply' reply.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit">❌</button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

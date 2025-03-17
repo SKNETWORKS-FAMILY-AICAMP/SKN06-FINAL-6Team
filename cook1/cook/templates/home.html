@@ -1,0 +1,288 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>홈페이지</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            position: relative;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn.login-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            text-decoration: none;
+            color: white;
+            background-color: #007bff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .btn.login-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* 쿠키 & 프로필 아이콘 */
+        .cookie-icon, .profile-img {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+        }
+
+        .profile-img {
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* 드롭다운 메뉴 */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 150px;
+            z-index: 1000;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 10px 15px;
+            color: black;
+            text-decoration: none;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .dropdown-menu a:hover {
+            background-color: #f5f5f5;
+        }
+
+        .dropdown-menu .logout {
+            color: white;
+            background-color: red;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .dropdown-menu .logout:hover {
+            background-color: darkred;
+        }
+
+        /* 쿠키 모달창 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-content ul li {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-content ul li span {
+            font-size: 18px;
+        }
+
+        .close-btn {
+            color: #555;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: red;
+        }
+
+        .main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-right: 1px solid #ccc;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo img {
+            width: 150px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .description {
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn.start-btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn.start-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .image-display {
+            width: 70%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .image-display img {
+            max-width: 100%;
+            height: auto;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+<div class="header">
+    {% if user.is_authenticated %}
+        <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+        <div class="profile-img-container" onclick="toggleDropdown()">
+            {% if user.user_photo %}
+                <img src="{{ user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+            {% else %}
+                <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+            {% endif %}
+        </div>
+
+        <div class="dropdown-menu" id="dropdown-menu">
+            <a href="{% url 'mypage' %}">My Page</a>
+            <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+        </div>
+    {% else %}
+        <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+    {% endif %}
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div class="logo">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO">
+        </div>
+        <div class="description">꾸깃꾸깃은 사용자 기반 레시피 추천 챗봇입니다.</div>
+        <a href="{% url 'chat' %}" class="btn start-btn">시작하기</a>
+    </div>
+
+    <div class="image-display">
+        <img src="{% static 'imgs/chat_example.png' %}" alt="CHAT 예시 화면">
+    </div>
+</div>
+
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2>🍪 쿠키 안내</h2>
+        {% if user.is_authenticated %}
+            <p>현재 보유 중인 쿠키: <strong>{{ user.points|default:"0" }}개</strong></p>
+            <ul>
+                <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+            </ul>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleDropdown() {
+        document.getElementById('dropdown-menu').classList.toggle('show');
+    }
+
+    function openModal() {
+        document.getElementById('myModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('myModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
