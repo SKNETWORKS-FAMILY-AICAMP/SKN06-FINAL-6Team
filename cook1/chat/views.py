@@ -5,7 +5,6 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from chat.lcel.lcel import mkch
-from chat.utils.memories import mkhisid
 from chat.utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
 from chat.models import Chats, ChatSession, HistoryChat
 import markdown
@@ -14,6 +13,7 @@ import uuid
 import tempfile
 from chat.utils.speech import SpeechProcessor
 from pydub import AudioSegment
+
 
 # stt,tts
 speech_processor = SpeechProcessor()
@@ -42,13 +42,19 @@ def chat_api(request, session_id):
                 text_input = request.POST.get("message", "").strip()
                 print("Received message:", text_input)
                 
-                image_url = None
+                image_urls = None
                 detected_ingredients = set()
 
                 if text_input:
                     query_with_ingredients = text_input
                 else:
                     query_with_ingredients = ""
+
+                # 리트리버
+                retriever_filter = request.session.get("retriever_filter", {"isref": False, "isfun": False, "isman": False})
+                
+                # Chatbot 인스턴스 생성
+                cchain = mkch(retriever_filter['isref'], retriever_filter['isfun'], retriever_filter['isman'])
 
                 # AI 응답 생성
                 response = cchain.invoke(
@@ -71,41 +77,25 @@ def chat_api(request, session_id):
                     "message": formatted_response,
                     "chat_history": request.session["chat_history"],
                     "detected_ingredients": list(detected_ingredients),
-                    "image_url": image_url
+                    "image_urls": image_urls
                 })
             
             # 로그인 한 사용자
             else:
                 # 사용자의 포인트 체크
                 user = request.user
+                current_points = user.points
                 if user.points < 10:
                     return JsonResponse({"success": False, "error": "채팅을 하려면 최소 쿠키 10개가 필요합니다."}, status=400)
 
-                # 포인트 차감
-                user.points -= 10
-                user.save()  # 포인트 변경 사항 저장
+                # 세션 조회
+                chat_session = ChatSession.objects.get(user_id=user_id, session_id=session_id)
 
-                current_points = user.points
+                # history_id 조회
+                history_record = HistoryChat.objects.get(user_id=user_id, session_id=chat_session)
+                history_id = str(history_record.history_id)
 
-                # 기존 세션 조회 또는 생성
-                if session_id:
-                    chat_session = ChatSession.objects.get(user_id=user_id, session_id=session_id)
-                    print(chat_session)
-                else:
-                    # 기존 세션 조회 또는 생성
-                    chat_session = ChatSession.objects.filter(user_id=user_id).order_by("-created_at").first()
-                    print(f"조회 안됨 > {chat_session}")
-                    if not chat_session:
-                        chat_session = ChatSession.objects.create(user_id=user_id)
-
-                # 기존 history_id 조회 또는 새로운 UUID 생성
-                try:
-                    history_record = HistoryChat.objects.get(user_id=user_id, session_id=chat_session)
-                    history_id = history_record.history_id
-                except:
-                    history_id = mkhisid()
-
-                # 기존 대화 내역 불러오기
+                # 대화 내역 불러오기
                 try:
                     history_record, _ = HistoryChat.objects.get_or_create(user_id=user_id, session=chat_session, defaults={"messages": json.dumps([])})
                     existing_messages = json.loads(history_record.messages)
@@ -115,30 +105,25 @@ def chat_api(request, session_id):
                 # 입력 값 처리
                 text_input = request.POST.get("message", "").strip()
                 detected_ingredients = set()
-                image_url = None
+                image_urls = []
 
                 # 이미지 업로드 처리
-                if "image" in request.FILES:
-                    image_file = request.FILES["image"]
+                if "images" in request.FILES:
+                    image_files = request.FILES.getlist("images")
                     upload_dir = "media/uploads/"
                     os.makedirs(upload_dir, exist_ok=True)
-                    image_path = os.path.join(upload_dir, image_file.name)
 
-                    with open(image_path, "wb") as f:
-                        for chunk in image_file.chunks():
-                            f.write(chunk)
-
-                    detected_ingredients.update(detect_ingredients(image_path))
-                    image_url = f"/media/uploads/{image_file.name}"
-
-                # 감지된 재료 정리
-                detected_ingredients = sorted(detected_ingredients)
+                    for image_file in image_files:
+                        image_path = os.path.join(upload_dir, image_file.name)
+                        with open(image_path, "wb") as f:
+                            for chunk in image_file.chunks():
+                                f.write(chunk)
+                        
+                        detected_ingredients.update(detect_ingredients(image_path))
+                        image_urls.append(f"/media/uploads/{image_file.name}")
 
                 # 최종 Query 구성
-                if detected_ingredients:
-                    query_with_ingredients = f"{text_input} 감지된 재료: {', '.join(detected_ingredients)}"
-                else:
-                    query_with_ingredients = text_input
+                query_with_ingredients = f"{text_input} 감지된 재료: {', '.join(sorted(detected_ingredients))}" if detected_ingredients else text_input
 
                 retriever_filter = request.session.get("retriever_filter", {"isref": False, "isfun": False, "isman": False})
 
@@ -167,13 +152,17 @@ def chat_api(request, session_id):
                 audio_path = speech_processor.generate_speech(response, user_id)
                 audio_url = f"/{audio_path}" if audio_path else None 
 
+                # 포인트 차감
+                user.points -= 10
+                user.save()  # 포인트 변경 사항 저장
+
                 # 응답 반환
                 return JsonResponse({
                     "success": True,
                     "message": formatted_response,
                     "chat_history": existing_messages,
-                    "detected_ingredients": detected_ingredients,
-                    "image_url": image_url,
+                    "detected_ingredients": list(detected_ingredients),
+                    "image_urls": image_urls,
                     "current_points": current_points,
                     "audio_url": audio_url,
                 })
@@ -206,7 +195,7 @@ def format_markdown(response):
 
         formatted_lines.append(line)
 
-    return "\n".join(formatted_lines)
+    return markdown.markdown("\n".join(formatted_lines), extensions=["extra"])
 
 
 @login_required

@@ -1,4 +1,3 @@
-import uuid
 from typing import List
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -53,7 +52,3 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
         store[(user_id, history_id)] = InMemoryHistory(messages=messages)
     
     return store[(user_id, history_id)]
-
-def mkhisid() -> str:
-    """UUID 기반 history_id 생성 함수"""
-    return str(uuid.uuid4())

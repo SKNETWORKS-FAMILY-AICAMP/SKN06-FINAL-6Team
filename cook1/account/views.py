@@ -13,6 +13,7 @@ import requests
 from django.contrib.sessions.models import Session
 from django.utils.timezone import now
 
+
 User = get_user_model()
 
 # 회원가입
@@ -224,7 +225,7 @@ def send_otp_email(request):
             fail_silently=False,
         )
 
-        # ✅ 인증번호 입력창을 유지하기 위해 세션 저장
+        # 인증번호 입력창을 유지하기 위해 세션 저장
         request.session["show_verification"] = True
 
         messages.success(request, "인증번호가 이메일로 전송되었습니다! 5분 내에 입력하세요.")
@@ -232,7 +233,7 @@ def send_otp_email(request):
     
     else:
         return redirect("find_pw")
-
+    
 def verify_otp(request):
     """사용자가 입력한 OTP를 검증"""
     if request.method == "POST":
@@ -256,7 +257,7 @@ def verify_otp(request):
             request.session["is_verified"] = True
             request.session["email_for_password_reset"] = email
 
-            # ✅ 인증 완료 후, 인증번호 입력창 세션 삭제
+            # 인증 완료 후, 인증번호 입력창 세션 삭제
             request.session.pop("show_verification", None)
 
             messages.success(request, "인증이 완료되었습니다! 비밀번호를 재설정하세요.")
@@ -316,14 +317,13 @@ def mypage(request):
         if form.is_valid():
             form.save()
             messages.success(request, "회원 정보가 수정되었습니다.")
-            return redirect('mypage')
+            return redirect('chat')
     else:
         form = UserUpdateForm(instance=user)
 
     user_photo_url = user.user_photo.url if user.user_photo else "/static/imgs/user.png"
 
     return render(request, 'mypage.html', {'form': form, 'user': user, 'user_photo_url': user_photo_url})
-
 
 # 회원탈퇴
 @login_required

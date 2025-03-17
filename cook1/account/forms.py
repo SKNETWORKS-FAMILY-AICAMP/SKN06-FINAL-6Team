@@ -1,18 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import Users
-
-from django import forms
 from django.contrib.auth.hashers import make_password
-from .models import Users
-
-from django import forms
-from django.contrib.auth.hashers import make_password
-from .models import Users
-
-from django import forms
-from django.contrib.auth.hashers import make_password
-from .models import Users
 
 class CustomUserCreationForm(forms.ModelForm):
     """회원가입 폼 (Users 모델 기반)"""

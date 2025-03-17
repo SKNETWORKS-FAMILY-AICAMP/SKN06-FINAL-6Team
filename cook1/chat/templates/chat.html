@@ -166,11 +166,50 @@
             margin-right: 10px;
         }
 
-        #imagePreview {
-            max-width: 50px;
-            max-height: 50px;
-            display: none;
-            margin-left: 10px;
+        #imagePreviewContainer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            max-width: 100%;
+            overflow-x: auto;
+            margin-bottom: 5px;
+        }
+
+        #imagePreviewContainer img {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 5px;
+            cursor: pointer;            
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .image-wrapper button {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .image-wrapper button:hover{
+            background: #ddd;
         }
 
         .dropdown-menu {
@@ -225,6 +264,7 @@
         }
 
         .modal-content {
+            position: relative;
             background-color: white;
             margin: 15% auto;
             padding: 20px;
@@ -257,8 +297,9 @@
         }
 
         .close-btn {
+            position: absolute;
+            top: 10px;  /* 버튼 위치 조정 */
             color: #555;
-            float: right;
             font-size: 24px;
             font-weight: bold;
             cursor: pointer;
@@ -275,6 +316,38 @@
             align-self: center;
         }
         
+        #imageModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+
+        .close-btn{
+            position: absolute;
+            top: 10px;
+            right:15px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #555;
+        }
+
+        .close-btn:hover {
+            color:red;
+        }        
+
         .filter-btn.active {
             background-color: #007bff;
             color: white;
@@ -295,7 +368,7 @@
 
             <div id="myModal" class="modal">
                 <div class="modal-content">
-                    <span class="close-btn" onclick="closeModal()">&times</span>
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
                     <h2>🍪 쿠키 안내</h2>
                     <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
                     <ul>
@@ -342,8 +415,8 @@
         <form method="POST" id="input-box">
             {% csrf_token %}
             <label id="imageLabel" for="imageInput">📸</label>
-            <input type="file" id="imageInput" accept="image/*" onchange="previewImage()">
-            <img id="imagePreview">
+            <input type="file" id="imageInput" accept="image/*" onchange="previewImages()">
+            <div id="imagePreviewContainer"></div>
             <img src="{% static 'imgs/mic.png' %}" alt="음성 입력" id="mic-button"/>
             <button type="button" id="upload-audio-btn">🎤 음성 파일 업로드</button>
             <input type="file" id="audioInput" accept="audio/*" style="display:none;">
@@ -357,12 +430,20 @@
         </div>
 
         <!-- TTS 기능 추가 -->
-        <button id="tts-btn">🔊 AI 응답 듣기</button>
+        <!-- <button id="tts-btn">🔊 AI 응답 듣기</button> -->
         <audio id="tts-audio" controls></audio>
     
         <!-- 추가한 부분 -->
         <input type="file" id="audioInput" accept="audio/*" style="display:none;">
     </div>
+
+        <!-- 이미지 확대 모달 -->
+        <div id="imageModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeImageModal()">&times;</span>
+                <img id="modalImage" src="" alt="Expanded Image">;
+            </div>
+        </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -384,7 +465,8 @@
 
                 if (!data.sessions || data.sessions.length === 0) {
                     sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
-                    currentSessionId = null
+                    startNewChat()
+                    currentSessionId = session.session_id;
                     return;
                 }
                 
@@ -394,16 +476,14 @@
                         <span onclick="loadChatHistory('${session.session_id}')">${session.title} (${session.summary})</span>
                         <button onclick="deleteChat('${session.session_id}')">x</button>
                     `;
-                    sessionList.appendChild(li);
-
-                    // ✅ 첫 번째 세션을 자동으로 불러옴
-                    if (index === 0) {
-                        currentSessionId = session.session_id;
-                    }                    
+                    sessionList.appendChild(li);               
                 });
                 
                 if (currentSessionId) {
                     await loadChatHistory(currentSessionId);
+                }
+                else{
+                    startNewChat()
                 }
             } catch (error) {
                 console.error("세션 목록 불러오기 실패:", error);
@@ -478,13 +558,10 @@
             isSending = true;
 
             const messageInput = document.getElementById("message-input");
-            const imageInput = document.getElementById("imageInput");
             const chatBox = document.getElementById("chat-box");
-
             const message = messageInput.value.trim();
-            const imageFile = imageInput.files[0];
 
-            if (!message && !imageFile) {
+            if (!message && selectedImages.length === 0) {
                 alert("메시지 또는 이미지를 입력하세요.");
                 isSending = false;
                 return;
@@ -492,7 +569,20 @@
 
             const formData = new FormData();
             formData.append("message", message);
-            if (imageFile) formData.append("image", imageFile);
+
+            let uploadedImages = [];
+            selectedImages.forEach(file => {
+                formData.append("images", file);
+                uploadedImages.push(URL.createObjectURL(file));
+            });
+
+            // 사용자 메시지 표시
+            let userMessageHTML = `<div class="message user-message" style="align-self: flex-end;">${message}`;
+            uploadedImages.forEach(imgSrc => {
+                userMessageHTML += `<img src="${imgSrc}" alt="Uploaded Image">`;
+            });
+            userMessageHTML += `</div>`;
+            chatBox.innerHTML += userMessageHTML;
 
             // if (!currentSessionId) {
             //     alert("세션이 없습니다. 새 채팅을 시작하세요.");
@@ -500,30 +590,31 @@
             //     return;
             // }
 
-            // 사용자 메시지를 오른쪽 정렬로 표시
-            if (message) {
-                let userDiv = document.createElement("div");
-                userDiv.classList.add("message", "user-message");
-                userDiv.style.alignSelf = "flex-end";
-                userDiv.innerHTML = message;
-                chatBox.appendChild(userDiv);
-            }
+            // // 사용자 메시지를 오른쪽 정렬로 표시
+            // if (message) {
+            //     let userDiv = document.createElement("div");
+            //     userDiv.classList.add("message", "user-message");
+            //     userDiv.style.alignSelf = "flex-end";
+            //     userDiv.innerHTML = message;
+            //     chatBox.appendChild(userDiv);
+            // }
 
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    let userImgDiv = document.createElement("div");
-                    userImgDiv.classList.add("message", "user-message");
-                    userImgDiv.style.alignSelf = "flex-end";
-                    userImgDiv.innerHTML = `<img src="${e.target.result}" width="100">`;
-                    chatBox.appendChild(userImgDiv);
-                };
-                reader.readAsDataURL(imageFile);
-            }
+            // if (imageFile) {
+            //     const reader = new FileReader();
+            //     reader.onload = function (e) {
+            //         let userImgDiv = document.createElement("div");
+            //         userImgDiv.classList.add("message", "user-message");
+            //         userImgDiv.style.alignSelf = "flex-end";
+            //         userImgDiv.innerHTML = `<img src="${e.target.result}" width="100">`;
+            //         chatBox.appendChild(userImgDiv);
+            //     };
+            //     reader.readAsDataURL(imageFile);
+            // }
 
+            // 입력 필드 초기화
             messageInput.value = "";
-            imageInput.value = "";
-            document.getElementById("imagePreview").style.display = "none";
+            selectedImages = []; // 업로드한 이미지 리스트 초기화
+            document.getElementById("imagePreviewContainer").innerHTML = "";
 
             try {
                 const response = await fetch(`./chat_api/${currentSessionId}/`, {
@@ -535,12 +626,24 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // ✅ AI 응답을 왼쪽 정렬로 표시
+                    // AI 응답을 왼쪽 정렬로 표시
                     let aiDiv = document.createElement("div");
                     aiDiv.classList.add("message", "bot-message");
                     aiDiv.style.alignSelf = "flex-start";
-                    aiDiv.innerHTML = data.message;
+                    
+                    // 감지된 재료 추가
+                    let detectedText ="";
+                    if (data.detected_ingredients && data.detected_ingredients.length > 0) {
+                        detectedText = `<strong>🔍 감지된 재료: ${data.detected_ingredients.join(", ")}</strong><br><br>`;
+                    }
+                    aiDiv.innerHTML = detectedText + data.message;
 
+                    // 여러 이미지 출력 
+                    if (data.image_urls && data.image_urls.length > 0) {
+                        data.image_urls.forEach(imgSrc => {
+                            aiDiv.innerHTML += `<img src="${imgSrc}" alt="Bot Image">`;
+                        });
+                    }
                     const ttsButton = document.createElement("button");
                     ttsButton.textContent = "🔊 듣기";
                     ttsButton.classList.add("btn");
@@ -549,13 +652,13 @@
 
                     chatBox.appendChild(aiDiv);
 
-                    if (data.image_url) {
-                        let aiImgDiv = document.createElement("div");
-                        aiImgDiv.classList.add("message", "bot-message");
-                        aiImgDiv.style.alignSelf = "flex-start";
-                        aiImgDiv.innerHTML = `<img src="${data.image_url}" width="100">`;
-                        chatBox.appendChild(aiImgDiv);
-                    }
+                    // if (data.image_url) {
+                    //     let aiImgDiv = document.createElement("div");
+                    //     aiImgDiv.classList.add("message", "bot-message");
+                    //     aiImgDiv.style.alignSelf = "flex-start";
+                    //     aiImgDiv.innerHTML = `<img src="${data.image_url}" width="100">`;
+                    //     chatBox.appendChild(aiImgDiv);
+                    // }
 
                     // 포인트 업데이트(자동화)
                     if (data.current_points !== undefined) {
@@ -607,21 +710,83 @@
         }
         }
 
-        function previewImage() {
-            const imageInput = document.getElementById("imageInput");
-            const imagePreview = document.getElementById("imagePreview");
-            const file = imageInput.files[0];
+        // 이미지 클릭 시 모달을 열고 확대된 이미지 표시
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById("imageModal");
+            const modalImage = document.getElementById("modalImage");
+            modal.style.display = "flex";
+            modalImage.src = imageSrc;
+        }
 
-            if (file) {
+        function closeImageModal() {
+            document.getElementById("imageModal").style.display = "none";
+        }
+
+        document.getElementById("chat-box").addEventListener("click", function(event) {
+            if (event.target.tagName === "IMG") {
+                openImageModal(event.target.src);
+            }
+        });
+
+        // esc 버튼 누르면 이미지 모달 닫기
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                closeImageModal();
+            }
+        });
+
+        let selectedImages = [];    // 업로드한 이미지들을 저장할 배열
+
+        function previewImages() {
+            const imageInput = document.getElementById("imageInput");
+            const previewContainer = document.getElementById("imagePreviewContainer");
+            let newFiles = Array.from(imageInput.files);
+
+            // 새로운 파일이 기존 배열에 추가되도록 함
+            selectedImages = [...selectedImages, ...newFiles];
+
+            // 중복 제거 (파일 이름 기준)
+            const uniqueFiles = [];
+            const fileNames = new Set();
+            selectedImages.forEach(file => {
+                if (!fileNames.has(file.name)) {
+                    uniqueFiles.push(file);
+                    fileNames.add(file.name);
+                }
+            });
+
+            selectedImages = uniqueFiles; // 중복 제거된 파일 리스트 적용
+            previewContainer.innerHTML = ""; // 기존 미리보기 초기화 후 다시 그림
+            selectedImages.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    imagePreview.src = e.target.result;
-                    imagePreview.style.display = "block";
+                    const imgWrapper = document.createElement("div");
+                    imgWrapper.classList.add("image-wrapper");
+
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.alt = "Uploaded Image";
+                    img.onclick = function () { openImageModal(e.target.result);};
+
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.innerHTML = "✖";
+                    deleteBtn.onclick = function () {
+                        removeImage(index);
+                    };
+
+                    imgWrapper.appendChild(img);
+                    imgWrapper.appendChild(deleteBtn);
+                    previewContainer.appendChild(imgWrapper);
                 };
                 reader.readAsDataURL(file);
-            } else {
-                imagePreview.style.display = "none";
-            }
+            });
+
+            imageInput.value = ""; // 파일 선택 창 초기화
+        }  
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            previewImages();    // 미리보기 갱신
         }
 
         document.getElementById("send-btn").addEventListener("click", sendMessage);
@@ -651,7 +816,6 @@
         function closeModal() {
             document.getElementById('myModal').style.display = 'none';
         }
-
         
         function scrollToBottom() {
             let chatBox = document.getElementById("chat-box");
@@ -883,7 +1047,6 @@
                 console.error("리트리버 변경 실패:", error);
             }
         }
-
     </script>
 
 </body>

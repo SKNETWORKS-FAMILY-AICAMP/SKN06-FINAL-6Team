@@ -96,14 +96,17 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             // 인증번호 입력창을 표시할지 확인
+            let verificationSection = document.getElementById("verification-section");
+            let resetPasswordSection = document.getElementById("reset-password-section");
+
             {% if request.session.show_verification %}
-                document.getElementById("verification-section").classList.remove("hidden");
+                verificationSection.classList.remove("hidden");  // 인증번호 입력창 표시
             {% endif %}
 
             // 비밀번호 재설정 폼을 표시할지 확인
             {% if request.session.is_verified %}
-                document.getElementById("verification-section").classList.add("hidden");
-                document.getElementById("reset-password-section").classList.remove("hidden");
+                verificationSection.classList.add("hidden");
+                resetPasswordSection.classList.remove("hidden");
             {% endif %}
         });
     </script>
@@ -113,9 +116,10 @@
 
     <h2>비밀번호 찾기</h2>
 
-    <!-- ✅ 1. 비밀번호 찾기 폼 -->
+    <!-- 1. 비밀번호 찾기 폼 -->
     <form id="find-pw-form" method="post" action="{% url 'find_pw' %}">
         {% csrf_token %}
+
         <label>아이디:</label>
         <input type="text" name="login_id" required value="{{ request.POST.login_id|default_if_none:'' }}">
 
@@ -127,7 +131,22 @@
             <input type="email" name="email" required value="{{ request.POST.email|default_if_none:'' }}">
             <button type="submit" class="btn-small">인증번호 받기</button>
         </div>
+    </form>
+
+    <!-- 2. 인증번호 입력 필드 -->
+    <div id="verification-section" class="{% if not request.session.show_verification %}hidden{% endif %}">
+        {% if request.session.show_verification %}
+            <form method="post" action="{% url 'verify_otp' %}">
+                {% csrf_token %}
+                <label>인증번호 입력:</label>
+                <input type="text" name="code" required>
+
+                <button type="submit" class="btn-large">인증하기</button>
+            </form>
+        </div>
         
+        {% endif %}
+
         {% if messages %}
             <div class="message">
                 {% for message in messages %}
@@ -135,23 +154,8 @@
                 {% endfor %}
             </div>
         {% endif %}
-    </form>
 
-    <!-- ✅ 2. 인증번호 입력 필드 -->
-    <div id="verification-section" class="hidden">
-        <form method="post" action="{% url 'verify_otp' %}">
-            {% csrf_token %}
-            <label>이메일:</label>
-            <input type="email" value="{{ request.session.reset_email }}" readonly>
-
-            <label>인증번호 입력:</label>
-            <input type="text" name="code" required>
-
-            <button type="submit" class="btn-large">인증하기</button>
-        </form>
-    </div>
-
-    <!-- ✅ 3. 비밀번호 변경 폼 -->
+    <!-- 3. 비밀번호 변경 폼 -->
     <div id="reset-password-section" class="hidden">
         <form method="post" action="{% url 'reset_password' %}">
             {% csrf_token %}
