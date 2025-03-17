@@ -348,6 +348,18 @@
             color:red;
         }        
 
+        #filter-buttons {
+            display: flex;
+            justify-content: left; /* 버튼들을 가운데 정렬 */
+            gap: 10px; /* 버튼 사이 여백 */
+            margin-bottom: 10px; /* 기존 위치에서 조금만 아래로 */
+            position: absolute;  /* 상단에 고정 */
+            top: 100px; /* 화면 상단에서 10px 간격 */
+            left: 35%;
+            transform: translateX(-50%); /* 가운데 정렬 */
+            padding: 10px;
+        }
+
         .filter-btn.active {
             background-color: #007bff;
             color: white;
@@ -366,7 +378,7 @@
                 {% endif %}
             </div>
 
-            <div id="myModal" class="modal">
+            <div id="myModal" class="modal"> 
                 <div class="modal-content">
                     <span class="close-btn" onclick="closeModal()">&times;</span>
                     <h2>🍪 쿠키 안내</h2>
@@ -411,6 +423,11 @@
             <div id="recording-indicator" style="display:none; width:100%; height:6px; background-color:#eee; margin-top:10px;">
                 <div id="recording-progress" style="width:0%; height:100%; background-color:blue;"></div>
             </div>
+            <div id="filter-buttons">
+                <button class="filter-btn" data-filter="man">만개의 레시피</button>
+                <button class="filter-btn" data-filter="fun">편스토랑</button>
+                <button class="filter-btn" data-filter="ref">냉장고를 부탁해</button>
+            </div>
 
         <form method="POST" id="input-box">
             {% csrf_token %}
@@ -423,18 +440,11 @@
             <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
             <button type="button" class="btn" id="send-btn">보내기</button>
         </form>
-        <div id="filter-buttons">
-            <button class="filter-btn" data-filter="man">만개의 레시피</button>
-            <button class="filter-btn" data-filter="fun">편스토랑</button>
-            <button class="filter-btn" data-filter="ref">냉장고를 부탁해</button>
-        </div>
-
+        
         <!-- TTS 기능 추가 -->
-        <!-- <button id="tts-btn">🔊 AI 응답 듣기</button> -->
+        <button id="tts-btn">🔊 AI 응답 듣기</button>
         <audio id="tts-audio" controls></audio>
     
-        <!-- 추가한 부분 -->
-        <input type="file" id="audioInput" accept="audio/*" style="display:none;">
     </div>
 
         <!-- 이미지 확대 모달 -->
@@ -522,11 +532,6 @@
                 let chatBox = document.getElementById("chat-box");
                 chatBox.innerHTML = ""; 
 
-                // if (!data.messages || data.messages.length === 0) {
-                //     chatBox.innerHTML = "<p>이전 대화가 없습니다.</p>";
-                //     return;
-                // }
-
                 currentSessionId = sessionId;
 
                 console.log("📌 서버에서 받은 메시지:", data.messages);
@@ -584,33 +589,6 @@
             userMessageHTML += `</div>`;
             chatBox.innerHTML += userMessageHTML;
 
-            // if (!currentSessionId) {
-            //     alert("세션이 없습니다. 새 채팅을 시작하세요.");
-            //     isSending = false;
-            //     return;
-            // }
-
-            // // 사용자 메시지를 오른쪽 정렬로 표시
-            // if (message) {
-            //     let userDiv = document.createElement("div");
-            //     userDiv.classList.add("message", "user-message");
-            //     userDiv.style.alignSelf = "flex-end";
-            //     userDiv.innerHTML = message;
-            //     chatBox.appendChild(userDiv);
-            // }
-
-            // if (imageFile) {
-            //     const reader = new FileReader();
-            //     reader.onload = function (e) {
-            //         let userImgDiv = document.createElement("div");
-            //         userImgDiv.classList.add("message", "user-message");
-            //         userImgDiv.style.alignSelf = "flex-end";
-            //         userImgDiv.innerHTML = `<img src="${e.target.result}" width="100">`;
-            //         chatBox.appendChild(userImgDiv);
-            //     };
-            //     reader.readAsDataURL(imageFile);
-            // }
-
             // 입력 필드 초기화
             messageInput.value = "";
             selectedImages = []; // 업로드한 이미지 리스트 초기화
@@ -651,14 +629,6 @@
                     aiDiv.appendChild(ttsButton);
 
                     chatBox.appendChild(aiDiv);
-
-                    // if (data.image_url) {
-                    //     let aiImgDiv = document.createElement("div");
-                    //     aiImgDiv.classList.add("message", "bot-message");
-                    //     aiImgDiv.style.alignSelf = "flex-start";
-                    //     aiImgDiv.innerHTML = `<img src="${data.image_url}" width="100">`;
-                    //     chatBox.appendChild(aiImgDiv);
-                    // }
 
                     // 포인트 업데이트(자동화)
                     if (data.current_points !== undefined) {
