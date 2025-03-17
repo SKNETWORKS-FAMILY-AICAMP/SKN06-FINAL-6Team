@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage
 from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.messages import HumanMessage, AIMessage
 from chat.models import HistoryChat 
 
 model = ChatOpenAI(model="gpt-4o-mini")
@@ -27,9 +28,20 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
     if (user_id, history_id) not in store:
         try:
             history_record = HistoryChat.objects.get(user_id=user_id, history_id=history_id)
-            messages = eval(history_record.messages)  # 저장된 JSON 문자열을 리스트로 변환
+            msgs = eval(history_record.messages) # 저장된 JSON 문자열을 리스트로 변환
+
+            # BaseMessage 객체 리스트로 형변환
+            messages = []
+            for msg in msgs:
+                if msg["role"] == "human":
+                    messages.append(HumanMessage(content=msg["content"]))
+                elif msg["role"] == "ai":
+                    messages.append(AIMessage(content=msg["content"]))
         except HistoryChat.DoesNotExist:
             messages = []
+        # print(f"id > {user_id, history_id}")
+        # print(f"{HistoryChat.objects.get(user_id=user_id, history_id=history_id)}")
+        # print(type(messages))
 
         # 세션 메모리에서만 오래된 대화를 요약 (저장된 DB 데이터는 그대로 유지)
         if len(messages) > 10:
@@ -42,6 +54,6 @@ def get_session_history(user_id: str, history_id: str) -> BaseChatMessageHistory
     
     return store[(user_id, history_id)]
 
-def mkhisid(user_id: str) -> str:
+def mkhisid() -> str:
     """UUID 기반 history_id 생성 함수"""
     return str(uuid.uuid4())

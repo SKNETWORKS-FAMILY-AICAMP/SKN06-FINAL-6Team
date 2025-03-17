@@ -13,12 +13,7 @@ import re
 import uuid
 import tempfile
 from chat.utils.speech import SpeechProcessor
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from pydub import AudioSegment
-
-# Chatbot 인스턴스 생성
-cchain = mkch()
 
 # stt,tts
 speech_processor = SpeechProcessor()
@@ -30,7 +25,7 @@ def chat_view(request):
     return render(request, "chat.html", {"chat_history": request.session["chat_history"]})
 
 @csrf_exempt
-def chat_api(request):
+def chat_api(request, session_id):
     if request.method == "POST":
         try:
             # 사용자 ID 받아오기
@@ -93,24 +88,26 @@ def chat_api(request):
                 current_points = user.points
 
                 # 기존 세션 조회 또는 생성
-                chat_session = ChatSession.objects.filter(user_id=user_id).order_by("-created_at").first()
-                if not chat_session:
-                    chat_session = ChatSession.objects.create(user_id=user_id)
+                if session_id:
+                    chat_session = ChatSession.objects.get(user_id=user_id, session_id=session_id)
+                    print(chat_session)
+                else:
+                    # 기존 세션 조회 또는 생성
+                    chat_session = ChatSession.objects.filter(user_id=user_id).order_by("-created_at").first()
+                    print(f"조회 안됨 > {chat_session}")
+                    if not chat_session:
+                        chat_session = ChatSession.objects.create(user_id=user_id)
 
                 # 기존 history_id 조회 또는 새로운 UUID 생성
-                history_id = mkhisid(user_id)
-                if not history_id:
-                    history_id = str(uuid.uuid4())  # 새로운 UUID 생성
-
-                # 기존 `HistoryChat` 불러오기 (없으면 생성)
-                history_record, created = HistoryChat.objects.get_or_create(
-                    user_id=user_id,
-                    session=chat_session,
-                    defaults={"messages": json.dumps([])}  # 기본 빈 리스트
-                )
+                try:
+                    history_record = HistoryChat.objects.get(user_id=user_id, session_id=chat_session)
+                    history_id = history_record.history_id
+                except:
+                    history_id = mkhisid()
 
                 # 기존 대화 내역 불러오기
                 try:
+                    history_record, _ = HistoryChat.objects.get_or_create(user_id=user_id, session=chat_session, defaults={"messages": json.dumps([])})
                     existing_messages = json.loads(history_record.messages)
                 except json.JSONDecodeError:
                     existing_messages = []
@@ -142,6 +139,11 @@ def chat_api(request):
                     query_with_ingredients = f"{text_input} 감지된 재료: {', '.join(detected_ingredients)}"
                 else:
                     query_with_ingredients = text_input
+
+                retriever_filter = request.session.get("retriever_filter", {"isref": False, "isfun": False, "isman": False})
+
+                # Chatbot 인스턴스 생성
+                cchain = mkch(retriever_filter['isref'], retriever_filter['isfun'], retriever_filter['isman'])
 
                 # AI 응답 생성 (이전 대화 내역을 포함하여 LangChain에 전달)
                 response = cchain.invoke(
@@ -275,7 +277,7 @@ def chat_history(request, session_id):
     for msg in messages:
         message_list.append({
             "content": msg["content"],  # JSON 형식 그대로 반환
-            "sender": "User" if msg["role"] == "user" else "ai",
+            "sender": "User" if msg["role"] == "human" else "AI",
         })
 
     return JsonResponse({
@@ -360,3 +362,21 @@ def tts_api(request):
             return JsonResponse({"audio_url": audio_path})
 
     return JsonResponse({"error": "Invalid request"}, status=400)
+
+@csrf_exempt
+def update_retriever(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+
+            isman = data.get("isman", False)
+            isfun = data.get("isfun", False)
+            isref = data.get("isref", False)
+
+            request.session["retriever_filter"] = {"isman": isman, "isfun": isfun, "isref": isref}
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)

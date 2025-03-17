@@ -19,7 +19,6 @@ load_dotenv()
 
 # llm 모델 정의
 model = ChatOpenAI(model="gpt-4o-mini")
-retriever = load_retriever(False, False, False)
 # 이전 대화 retriever 결과 contents 저장 변수
 contents = []
 
@@ -52,7 +51,7 @@ def intent(query):
     messages = [
         ("system", dedent("""너는 사용자의 질문(query)을 분석해서 의도를 파악하고 [`new`, `continue`] 둘 중에 하나로 return하는 ai야.
         `continue`로 분류해야하는 경우는 다음과 같아. 사용자가 이전에 네가 이전에 대답한 것(history)에 관련해서 추가 정보 요청 등을 요구할 때, 메뉴 이름만 언급하거나 번호만 언급하는 경우,
-        메뉴 이름을 언급한 했으며 history에 그 요리 이름이 있는 경우 등 이전 질문과 관련있을 때만 `continue`로 분류해. 이외의 경우는 전부 `new`로 분류해.""")),
+        메뉴 이름을 언급한 했으며 history에 그 요리 이름이 있는 경우 등 이전 질문과 관련있을 때만 `continue`로 분류해. 이외의 경우는 전부 `new`로 분류해. 재료만 입력할 경우 무조건 `new`로 분류해""")),
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{query}")
     ]
@@ -72,7 +71,7 @@ def normal(query):
         다음 조건에 맞춰서 답변해.
         
         # 조건
-        1. query를 사용자가 요구한 결과가 출력될 수 있게 변형해 `menu_search` tool을 실행한다. menu에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답한다.
+        1. context에서 답변을 찾을 수 없으면 답변을 만들지 말고 `모르겠습니다.`라고 대답한다.
         
         2. 검색 결과를 알려줄 때 요리를 3가지 알려준다.
         2-1. 요리를 알려줄 때는 요리 이름, 요리 한 줄 소개, 요리 재료, 사진을 알려준다. 이외 정보는 언급하지 않는다.
@@ -82,7 +81,7 @@ def normal(query):
         
         3. 사용자가 요리 이름을 언급하며 레시피를 알려달라고 요청하면, 검색 결과 내용을 말로 풀어서 한 가지 요리 정보만 전달한다.
         3-1. 요리 이름, 재료, 레시피, 사진, 영상을 제공한다.
-        3-2. 이외 사항은 3-1, 3-2. 3-3 조건에 맞게 대답한다.
+        3-2. 이외 사항은 2-1, 2-2. 2-3, 2-4 조건에 맞게 대답한다.
         # context
         {context}
         """))), 
@@ -104,7 +103,7 @@ def derived(query):
         다음 조건에 맞춰서 답변해.
         
         # 조건
-        1. 사용자가 이전에 추천해준 요리 목록에서 요리를 고르면 `history`와 `content`를 참고해 해당 요리의 레시피와 영상을 알려준다.
+        1. 사용자가 이전에 추천해준 요리 목록에서 요리를 고르면 `history`를 참고해 사용자가 요구하는 요리의 레시피와 영상을 `content`에서 찾아 알려준다.
         1-1. `_collection_name` key의 value가 `funs`, `ref 중 하나인 경우 요리 이름은 변형하지 않고 그대로 대답한다.
         1-2. 영상은 요리정보의 `video` key에 있다. 반드시 답변하는 요리와 같은 id의 `video` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `video`가 없거나 값이 없으면(빈문자열이면) 제공하지 않는다.
 
@@ -117,11 +116,13 @@ def derived(query):
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{question}")]
     prompt_template = ChatPromptTemplate(messages)
-    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs,} | prompt_template | model | StrOutputParser()
+    dchain = {"question": itemgetter("question"), "history": itemgetter("history"), "content": itemgetter("content"), "context": itemgetter("question") | retriever | format_docs} | prompt_template | model | StrOutputParser()
     return dchain
 
-def mkch():
-    base_chain = RunnableLambda(lambda x: (lambda chain: chain.invoke({**x, "content": contents if chain == derived else []}))(select_chain(x)))
+def mkch(isref=True, isfun=True, isman=True):
+    global retriever
+    retriever = load_retriever(isref, isfun, isman)
+    base_chain = RunnableLambda(lambda x: (lambda chain:chain.invoke({**x, "content": contents if chain == derived else []}))(select_chain(x)))
     mkchain = RunnableWithMessageHistory(
         base_chain, get_session_history=get_session_history, input_messages_key="question", history_messages_key="history",
         history_factory_config=[
@@ -133,7 +134,7 @@ def mkch():
 
 def select_chain(x):
     """intent 분석 결과에 따라 실행할 체인을 선택"""
-    history = x['history'][:-3]
+    history = x['history'][:-6]
     chk = intent.invoke({"query": x["question"], "history": history})
     if chk.flag == "continue":
         return derived

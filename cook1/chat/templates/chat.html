@@ -274,6 +274,11 @@
             cursor: pointer;
             align-self: center;
         }
+        
+        .filter-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -344,7 +349,12 @@
             <input type="file" id="audioInput" accept="audio/*" style="display:none;">
             <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
             <button type="button" class="btn" id="send-btn">보내기</button>
-        </form> 
+        </form>
+        <div id="filter-buttons">
+            <button class="filter-btn" data-filter="man">만개의 레시피</button>
+            <button class="filter-btn" data-filter="fun">편스토랑</button>
+            <button class="filter-btn" data-filter="ref">냉장고를 부탁해</button>
+        </div>
 
         <!-- TTS 기능 추가 -->
         <button id="tts-btn">🔊 AI 응답 듣기</button>
@@ -516,7 +526,7 @@
             document.getElementById("imagePreview").style.display = "none";
 
             try {
-                const response = await fetch("./chat_api/", {
+                const response = await fetch(`./chat_api/${currentSessionId}/`, {
                     method: "POST",
                     body: formData,
                     headers: { "X-CSRFToken": getCsrfToken() }
@@ -833,6 +843,46 @@
             })
             .catch(error => console.error("TTS 오류:", error));
         });
+
+        // 태그 리트리버
+        document.querySelectorAll(".filter-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                this.classList.toggle("active");  // 현재 버튼의 활성화 상태만 변경
+
+                let isman = document.querySelector("[data-filter='man']").classList.contains("active");
+                let isfun = document.querySelector("[data-filter='fun']").classList.contains("active");
+                let isref = document.querySelector("[data-filter='ref']").classList.contains("active");
+
+                // 아무것도 선택 안 되면 기본 설정 (모든 리트리버)
+                if (!isman && !isfun && !isref) {
+                    updateRetriever({isman: false, isfun: false, isref: false});
+                } else {
+                    updateRetriever({isman, isfun, isref});
+                }
+            });
+        });
+
+        async function updateRetriever(filters) {
+            try {
+                const response = await fetch("./update_retriever/", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCsrfToken(),
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(filters)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("설정이 변경되었습니다.");
+                } else {
+                    alert("리트리버 설정 변경 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("리트리버 변경 실패:", error);
+            }
+        }
 
     </script>
 
