@@ -86,7 +86,11 @@
             height: 0;
             border-style: solid;
             border-width: 10px 0 10px 10px;
+<<<<<<< HEAD
             border-color: transparent transparent transparent #007bff;
+=======
+            border-color: transparent transparent transparent rgba(0, 0, 255, 0.519);
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
             transform: translateY(-50%);
         }
 
@@ -99,7 +103,11 @@
             height: 0;
             border-style: solid;
             border-width: 10px 10px 10px 0;
+<<<<<<< HEAD
             border-color: transparent #f1f1f1 transparent transparent;
+=======
+            border-color: transparent #fdfdfdf2 transparent transparent;
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
             transform: translateY(-50%);
         }
 
@@ -274,6 +282,14 @@
             cursor: pointer;
             align-self: center;
         }
+<<<<<<< HEAD
+=======
+        
+        .filter-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
     </style>
 </head>
 <body>
@@ -292,7 +308,11 @@
                 <div class="modal-content">
                     <span class="close-btn" onclick="closeModal()">&times</span>
                     <h2>🍪 쿠키 안내</h2>
+<<<<<<< HEAD
                     <p>현재 보유 중인 쿠키: <strong>{{ request.user.points|default:'0' }}개</strong></p>
+=======
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                     <ul>
                         <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
                         <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
@@ -330,6 +350,12 @@
     <div id="chat-container">
         <h1>꾸깃꾸깃</h1>
         <div id="chat-box"></div>
+<<<<<<< HEAD
+=======
+            <div id="recording-indicator" style="display:none; width:100%; height:6px; background-color:#eee; margin-top:10px;">
+                <div id="recording-progress" style="width:0%; height:100%; background-color:blue;"></div>
+            </div>
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
 
         <form method="POST" id="input-box">
             {% csrf_token %}
@@ -337,9 +363,29 @@
             <input type="file" id="imageInput" accept="image/*" onchange="previewImage()">
             <img id="imagePreview">
             <img src="{% static 'imgs/mic.png' %}" alt="음성 입력" id="mic-button"/>
+<<<<<<< HEAD
             <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
             <button type="button" class="btn" id="send-btn">보내기</button>
         </form> 
+=======
+            <button type="button" id="upload-audio-btn">🎤 음성 파일 업로드</button>
+            <input type="file" id="audioInput" accept="audio/*" style="display:none;">
+            <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
+            <button type="button" class="btn" id="send-btn">보내기</button>
+        </form>
+        <div id="filter-buttons">
+            <button class="filter-btn" data-filter="man">만개의 레시피</button>
+            <button class="filter-btn" data-filter="fun">편스토랑</button>
+            <button class="filter-btn" data-filter="ref">냉장고를 부탁해</button>
+        </div>
+
+        <!-- TTS 기능 추가 -->
+        <button id="tts-btn">🔊 AI 응답 듣기</button>
+        <audio id="tts-audio" controls></audio>
+    
+        <!-- 추가한 부분 -->
+        <input type="file" id="audioInput" accept="audio/*" style="display:none;">
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
     </div>
 
     <script>
@@ -404,7 +450,10 @@
                     document.getElementById("chat-box").innerHTML = "";
                     
                     loadChatSessions();
+<<<<<<< HEAD
                     loadChatHistory(currentSessionId);
+=======
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                 } else {
                     alert("새 채팅을 생성할 수 없습니다.");
                 }
@@ -432,6 +481,7 @@
 
                 data.messages.forEach(msg => {
                     let messageDiv = document.createElement("div");
+<<<<<<< HEAD
                     let className = msg.sender === "AI" ? "bot-message" : "user-message";
                     messageDiv.classList.add("message", className);
 
@@ -449,6 +499,17 @@
                         .replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" style="width: 200px; height: auto; display: block; margin: 10px auto;">'); // 이미지
 
                     messageDiv.innerHTML = formattedContent;
+=======
+                    
+                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
+                    messageDiv.classList.add("message", className);
+
+                    // AI 메시지는 왼쪽 정렬, 사용자 메시지는 오른쪽 정렬
+                    messageDiv.style.alignSelf = msg.sender === "AI" ? "flex-start" : "flex-end";
+
+                    messageDiv.innerHTML = msg.content;
+
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                     chatBox.appendChild(messageDiv);
                 });
 
@@ -481,6 +542,7 @@
             formData.append("message", message);
             if (imageFile) formData.append("image", imageFile);
 
+<<<<<<< HEAD
             if (!currentSessionId) {
                 alert("세션이 없습니다. 새 채팅을 시작하세요.");
                 isSending = false;
@@ -488,6 +550,15 @@
             }
 
             // ✅ 사용자 메시지를 오른쪽 정렬로 표시
+=======
+            // if (!currentSessionId) {
+            //     alert("세션이 없습니다. 새 채팅을 시작하세요.");
+            //     isSending = false;
+            //     return;
+            // }
+
+            // 사용자 메시지를 오른쪽 정렬로 표시
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
             if (message) {
                 let userDiv = document.createElement("div");
                 userDiv.classList.add("message", "user-message");
@@ -513,7 +584,11 @@
             document.getElementById("imagePreview").style.display = "none";
 
             try {
+<<<<<<< HEAD
                 const response = await fetch("./chat_api/", {
+=======
+                const response = await fetch(`./chat_api/${currentSessionId}/`, {
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                     method: "POST",
                     body: formData,
                     headers: { "X-CSRFToken": getCsrfToken() }
@@ -527,6 +602,16 @@
                     aiDiv.classList.add("message", "bot-message");
                     aiDiv.style.alignSelf = "flex-start";
                     aiDiv.innerHTML = data.message;
+<<<<<<< HEAD
+=======
+
+                    const ttsButton = document.createElement("button");
+                    ttsButton.textContent = "🔊 듣기";
+                    ttsButton.classList.add("btn");
+                    ttsButton.onclick = () => playTTS(data.audio_url);  // TTS 버튼 클릭 시 음성 재생
+                    aiDiv.appendChild(ttsButton);
+
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                     chatBox.appendChild(aiDiv);
 
                     if (data.image_url) {
@@ -536,6 +621,19 @@
                         aiImgDiv.innerHTML = `<img src="${data.image_url}" width="100">`;
                         chatBox.appendChild(aiImgDiv);
                     }
+<<<<<<< HEAD
+=======
+
+                    // 포인트 업데이트(자동화)
+                    if (data.current_points !== undefined) {
+                        document.getElementById("cookie-count").textContent = `${data.current_points}개`;
+                    }
+
+                    if (data.current_points <= 0) {
+                        alert("포인트가 부족합니다. 채팅을 더 이상 할 수 없습니다.");
+                        document.getElementById("send-btn").disabled = true; // 채팅 버튼 비활성화
+                    }
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
                 } else {
                     alert("오류 발생: " + data.error);
                 }
@@ -568,6 +666,18 @@
             }
         }
 
+<<<<<<< HEAD
+=======
+        function playTTS(audio_url) {
+        if (audio_url) {
+            const audio = new Audio(audioUrl);
+            audio.play();
+        } else {
+            alert("음성 파일이 없습니다.");
+        }
+        }
+
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
         function previewImage() {
             const imageInput = document.getElementById("imageInput");
             const imagePreview = document.getElementById("imagePreview");
@@ -650,6 +760,204 @@
 
             recognition.start();
         }
+<<<<<<< HEAD
+=======
+
+        // 마이크 버튼 클릭 이벤트 핸들러 수정 (녹음 or 파일 업로드 선택)
+        document.getElementById("mic-button").addEventListener("click", () => {
+            const choice = confirm("직접 음성을 녹음하시겠습니까? (취소 시 음성 파일 업로드)");
+            if (choice) {
+                startSpeechRecording();
+            } else {
+                document.getElementById("audioInput").click();
+            }
+        });
+
+        // 음성 파일 업로드 버튼 클릭 이벤트
+        document.getElementById("upload-audio-btn").addEventListener("click", () => {
+            document.getElementById("audioInput").click();
+        });
+
+        // 음성 파일 업로드 처리
+        document.getElementById("audioInput").addEventListener("change", async (event) => {
+            const audioFile = event.target.files[0];
+            if (!audioFile) return;
+
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+
+            try {
+                const response = await fetch('./stt-api/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.text) {
+                    document.getElementById('message-input').value = data.text;
+                } else {
+                    alert("음성을 인식하지 못했습니다.");
+                }
+            } catch (error) {
+                console.error("STT 요청 중 오류:", error);
+                alert("STT 처리 중 오류가 발생했습니다.");
+            }
+        });
+
+        // 🎤 음성 직접 녹음 후 Whisper API로 변환하여 메시지 입력창에 출력하는 기능
+        function startSpeechRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+
+                    const indicator = document.getElementById("recording-indicator");
+                    const progress = document.getElementById("recording-progress");
+
+                    let recordingTime = 0;
+                    const maxTime = 4000; // 녹음 최대 시간 (4초)
+
+                    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+
+                    mediaRecorder.onstop = async () => {
+                        indicator.style.display = "none";
+                        progress.style.width = "0%";
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'recording.webm');
+
+                        try {
+                            const response = await fetch('./stt-api/', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const data = await response.json();
+                            if (data.text) {
+                                document.getElementById('message-input').value = data.text;
+                            } else {
+                                alert("음성을 인식하지 못했습니다.");
+                            }
+                        } catch (error) {
+                            console.error("STT 요청 중 오류 발생:", error);
+                            alert("STT 요청 중 오류가 발생했습니다.");
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    indicatorReset();
+
+                    indicatorStart(); // 진행바 시작
+
+                    function indicatorStart() {
+                        indicatorReset();
+                        indicatorUpdate();
+                    }
+
+                    function indicatorUpdate() {
+                        recordingTime += 100;
+                        const percentage = (recordingTime / maxTime) * 100;
+                        progress.style.width = `${percentage}%`;
+
+                        if (recordingTime < maxTime) {
+                            setTimeout(indicatorUpdate, 100);
+                        }
+                    }
+
+                    function indicatorReset() {
+                        indicator.style.display = 'block';
+                        progress.style.width = "0%";
+                        recordingTime = 0;
+                    }
+
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                        indicatorReset();
+                    }, maxTime);
+                    
+                    function indicatorReset() {
+                        indicator.style.display = "block";
+                        progress.style.width = "0%";
+                    }
+                })
+                .catch(error => {
+                    console.error("마이크 접근 오류:", error);
+                    alert("마이크 접근이 허용되지 않았습니다.");
+                });
+        }
+
+        // 🔊 TTS 기능 추가
+        document.getElementById("tts-btn").addEventListener("click", function() {
+            const lastBotMessage = document.querySelector(".bot-message:last-of-type");
+            if (!lastBotMessage) {
+                alert("AI 응답이 없습니다.");
+                return;
+            }
+            
+            const text = lastBotMessage.innerText;
+            const formData = new FormData();
+            formData.append("text", text);
+            formData.append("user_id", "1234");
+
+            fetch("./tts-api/", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.audio_url) {
+                    document.getElementById("tts-audio").src = data.audio_url;
+                    document.getElementById("tts-audio").play();
+                } else {
+                    alert("음성 변환 실패");
+                }
+            })
+            .catch(error => console.error("TTS 오류:", error));
+        });
+
+        // 태그 리트리버
+        document.querySelectorAll(".filter-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                this.classList.toggle("active");  // 현재 버튼의 활성화 상태만 변경
+
+                let isman = document.querySelector("[data-filter='man']").classList.contains("active");
+                let isfun = document.querySelector("[data-filter='fun']").classList.contains("active");
+                let isref = document.querySelector("[data-filter='ref']").classList.contains("active");
+
+                // 아무것도 선택 안 되면 기본 설정 (모든 리트리버)
+                if (!isman && !isfun && !isref) {
+                    updateRetriever({isman: false, isfun: false, isref: false});
+                } else {
+                    updateRetriever({isman, isfun, isref});
+                }
+            });
+        });
+
+        async function updateRetriever(filters) {
+            try {
+                const response = await fetch("./update_retriever/", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCsrfToken(),
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(filters)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("설정이 변경되었습니다.");
+                } else {
+                    alert("리트리버 설정 변경 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("리트리버 변경 실패:", error);
+            }
+        }
+
+>>>>>>> 57faca037252e9d29427b9c2b95b05c38e23df88
     </script>
 
 </body>
