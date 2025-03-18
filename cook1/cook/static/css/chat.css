@@ -9,18 +9,84 @@ body {
     display: flex;
     height: 100vh;
 }
-
 #sidebar {
     width: 20%;
     height: 100vh;
     background-color: #f4f4f4;
     overflow-y: auto;
     padding: 10px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.icons-container {
+    display: flex;
+    width: 100%;  
+    margin-bottom: 10px;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.sidebar-icon {
+    width: 30px; 
+    height: auto;
+    margin-bottom: 15px; 
+    cursor: pointer;
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%; 
+    margin: 3px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: none;
+}
+
+.session-item span {
+    flex-grow: 1; 
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis; 
+}
+
+.delete-btn {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+#sessionList li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    list-style: none;
+}
+
+
+#sessionList li.active {
+    background-color:  rgba(0, 0, 0, 0.201);
+    font-weight: bold;
+    color: #000;
+}
+
+h4 {
+    font-size: 18px;
+    margin-top: 20px;
 }
 
 #chat-container {
+    margin-top: 90px;
     flex-grow: 1;
-    height: 100vh;
+    height: calc(100vh - 120px);
     display: flex;
     flex-direction: column;
     padding: 10px;
@@ -33,15 +99,17 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    height: calc(100vh - 170px);
+    margin-bottom: 50px;
 }
 
 .message {
-    max-width: 70%;
-    padding: 10px 15px;
+    max-width: 60%;
+    padding: 8px 12px;
     margin: 5px 0;
-    border-radius: 15px;
+    border-radius: 12px;
     word-wrap: break-word;
-    font-size: 16px;
+    font-size: 14px;
     position: relative;
     display: inline-block;
 }
@@ -72,12 +140,12 @@ body {
 .user-message::after {
     content: "";
     position: absolute;
-    right: -10px;
+    right: -6px;
     top: 50%;
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 10px 0 10px 10px;
+    border-width: 6px 0 6px 6px;
     border-color: transparent transparent transparent rgba(0, 0, 255, 0.519);
     transform: translateY(-50%);
 }
@@ -85,12 +153,12 @@ body {
 .bot-message::after {
     content: "";
     position: absolute;
-    left: -10px;
+    left: -6px;
     top: 50%;
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 10px 10px 10px 0;
+    border-width: 6px 0px 6px 6px;
     border-color: transparent #fdfdfdf2 transparent transparent;
     transform: translateY(-50%);
 }
@@ -98,9 +166,13 @@ body {
 #input-box {
     display: flex;
     padding: 10px;
-    background: white;
-    width: 100%;
     align-items: center;
+    width: 70%;
+    padding: 15px;
+    bottom: 0;
+    position: fixed;
+    left: 25%;
+    transform: translateX;
 }
 
 #message-input {
@@ -119,11 +191,11 @@ body {
 }
 
 .btn:hover {
-    background-color: blue;
+    background-color: rgba(0, 0, 255, 0.519);
 }
 
 .header {
-    position: absolute;
+    position: fixed;
     top: 15px;
     right: 20px;
     display: flex;
@@ -152,10 +224,14 @@ body {
 
 #imageLabel {
     cursor: pointer;
-    padding: 5px;
-    background-color: lightgray;
-    border-radius: 5px;
-    margin-right: 10px;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+}
+#uploadIcon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 #imagePreviewContainer {
@@ -235,14 +311,15 @@ body {
 
 .dropdown-menu .logout {
     color: white;
-    background-color: red;
+    background-color: #FBD2D2;
     text-align: center;
     border-radius: 0 0 8px 8px;
 }
 
 .dropdown-menu .logout:hover {
-    background-color: darkred;
+    background-color: #fb9f9f;
 }
+
 
 .modal {
     display: none;
@@ -308,6 +385,13 @@ body {
     align-self: center;
 }
 
+#send-btn {
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    align-self: center;
+}
+
 #imageModal {
     display: none;
     position: fixed;
@@ -342,17 +426,23 @@ body {
 
 #filter-buttons {
     display: flex;
-    justify-content: left; /* 버튼들을 가운데 정렬 */
-    gap: 10px; /* 버튼 사이 여백 */
-    margin-bottom: 10px; /* 기존 위치에서 조금만 아래로 */
-    position: absolute;  /* 상단에 고정 */
-    top: 100px; /* 화면 상단에서 10px 간격 */
-    left: 35%;
-    transform: translateX(-50%); /* 가운데 정렬 */
-    padding: 10px;
+    justify-content: left;
+    gap: 15px;
+    position: absolute; 
+    top: 10px;
+    left: 32%;
+    transform: translateX(-50%);
+    padding: 15px;
+}
+
+.filter-btn {
+    border: 1px #ccc;
+    border-right: none;
+    width: 80px;
+    height: 30px;
 }
 
 .filter-btn.active {
-    background-color: #007bff;
+    background-color: rgba(0, 0, 255, 0.519);
     color: white;
 }

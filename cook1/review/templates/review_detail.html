@@ -3,9 +3,9 @@
     <h2>{{ review.selected_menu.menu_name }}</h2>
     <p><strong>작성자:</strong> 
         {{ review.user.nickname }} (
-        {{ review.user.username|slice:":3" }}
-        {% if review.user.username|length > 3 %}
-            {% with remaining=review.user.username|length|add:"-3" %}
+        {{ review.user.user_id|slice:":3" }}
+        {% if review.user.user_id|length > 3 %}
+            {% with remaining=review.user.user_id|length|add:"-3" %}
                 {% for _ in "x"|ljust:remaining %}*{% endfor %}
             {% endwith %}
         {% endif %}

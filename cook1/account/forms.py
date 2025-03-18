@@ -13,6 +13,7 @@ class CustomUserCreationForm(forms.ModelForm):
         widget=forms.TextInput(attrs={"placeholder": "별명"}))
     birthday = forms.DateField(required=True, label="생년월일", widget=forms.DateInput(attrs={"type": "date", "placeholder": "생년월일 선택"}))
     user_photo = forms.ImageField(required=False, label="프로필 사진")
+    
 
     # ✅ Users 모델에는 없지만, 폼에서만 사용할 필드
     password1 = forms.CharField(

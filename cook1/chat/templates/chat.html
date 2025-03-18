@@ -45,8 +45,10 @@
     {% if request.user.is_authenticated %}
         <div id="sidebar">
             <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
-            <button onclick="location.href='{% url 'review_list' %}'">리뷰 게시판</button>
-            <button id="start-chat-btn" onclick="startNewChat()">새 채팅 시작</button>
+            <div class="icons-container">
+                <img src="{% static 'imgs/review_chat.png' %}" class="sidebar-icon" onclick="location.href='{% url 'review_list' %}'">
+                <img src="{% static 'imgs/plus.png' %}" class="sidebar-icon" onclick="startNewChat()">
+            </div>
             <h2>이전 채팅 목록</h2>
             <ul id="sessionList"></ul>
             {% if grouped_messages %}
@@ -65,33 +67,29 @@
     {% endif %}
 
     <div id="chat-container">
-        <h1>꾸깃꾸깃</h1>
         <div id="chat-box"></div>
+
             <div id="recording-indicator" style="display:none; width:100%; height:6px; background-color:#eee; margin-top:10px;">
                 <div id="recording-progress" style="width:0%; height:100%; background-color:blue;"></div>
             </div>
             <div id="filter-buttons">
-                <button class="filter-btn" data-filter="man">만개의 레시피</button>
+                <button class="filter-btn" data-filter="man">일반</button>
                 <button class="filter-btn" data-filter="fun">편스토랑</button>
-                <button class="filter-btn" data-filter="ref">냉장고를 부탁해</button>
+                <button class="filter-btn" data-filter="ref">냉부</button>
             </div>
 
         <form method="POST" id="input-box">
             {% csrf_token %}
-            <label id="imageLabel" for="imageInput">📸</label>
+            <label id="imageLabel" for="imageInput">
+                <img src="{% static 'imgs/image.png' %}" alt="camera" id="uploadIcon">
+            </label>
             <input type="file" id="imageInput" accept="image/*" onchange="previewImages()">
             <div id="imagePreviewContainer"></div>
             <img src="{% static 'imgs/mic.png' %}" alt="음성 입력" id="mic-button"/>
-            <button type="button" id="upload-audio-btn">🎤 음성 파일 업로드</button>
             <input type="file" id="audioInput" accept="audio/*" style="display:none;">
             <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
-            <button type="button" class="btn" id="send-btn">보내기</button>
+            <img src="{% static 'imgs/send.png' %}" alt="보내기" id="send-btn"/>
         </form>
-        
-        <!-- TTS 기능 추가 -->
-        <button id="tts-btn">🔊 AI 응답 듣기</button>
-        <audio id="tts-audio" controls></audio>
-    
     </div>
 
         <!-- 이미지 확대 모달 -->
@@ -122,22 +120,38 @@
 
                 if (!data.sessions || data.sessions.length === 0) {
                     sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
-                    startNewChat()
-                    currentSessionId = session.session_id;
+                    startNewChat();
                     return;
                 }
                 
                 data.sessions.forEach((session, index) => {
                     let li = document.createElement("li");
+                    li.setAttribute("data-session-id", session.session_id);
+                    li.style.listStyleType = "none";
+
                     li.innerHTML = `
-                        <span onclick="loadChatHistory('${session.session_id}')">${session.title} ${session.summary}</span>
-                        <button onclick="deleteChat('${session.session_id}')">x</button>
+                        <div class="session-item">
+                            <span onclick="loadChatHistory('${session.session_id}')">${session.title} ${session.summary}</span>
+                            <button class="delete-btn" onclick="deleteChat('${session.session_id}')">✖</button>
+                        <div>
                     `;
-                    sessionList.appendChild(li);               
-                });
                 
+                    if (session.session_id === currentSessionId) {
+                        li.classList.add("active");
+                    }
+
+                    li.addEventListener("click", async () => {
+                        currentSessionId = session.session_id; // 현재 세션 업데이트
+                        await loadChatHistory(currentSessionId);
+                        setTimeout(updateActiveSession, 100);
+                    });
+
+                    sessionList.appendChild(li);
+                });
+
                 if (currentSessionId) {
                     await loadChatHistory(currentSessionId);
+                    setTimeout(updateActiveSession, 100);
                 }
                 else{
                     startNewChat()
@@ -181,7 +195,12 @@
 
                 currentSessionId = sessionId;
 
-                console.log("📌 서버에서 받은 메시지:", data.messages);
+                document.querySelectorAll("#sessionList li").forEach(li => {
+                    li.classList.remove("active");
+                    if (li.textContent === data.title) {
+                        li.classList.add("active");
+                    }
+                });
 
                 data.messages.forEach(msg => {
                     let messageDiv = document.createElement("div");
@@ -249,6 +268,7 @@
                 });
 
                 const data = await response.json();
+                
 
                 if (data.success) {
                     // AI 응답을 왼쪽 정렬로 표시
@@ -269,12 +289,40 @@
                             aiDiv.innerHTML += `<img src="${imgSrc}" alt="Bot Image">`;
                         });
                     }
-                    const ttsButton = document.createElement("button");
-                    ttsButton.textContent = "🔊 듣기";
-                    ttsButton.classList.add("btn");
-                    ttsButton.onclick = () => playTTS(data.audio_url);  // TTS 버튼 클릭 시 음성 재생
-                    aiDiv.appendChild(ttsButton);
+                    // 소리 버튼 
+                    const ttsImage = document.createElement("img");
+                    ttsImage.src = "{% static 'imgs/sound.png' %}"; // 기본값: 소리 켜짐
+                    ttsImage.alt = "TTS 듣기";
+                    ttsImage.style.cursor = "pointer";
+                    ttsImage.style.width = "24px";
+                    ttsImage.style.height = "24px";
 
+                    let audio = null; // 현재 재생 중인 오디오 객체 저장용
+
+                    ttsImage.addEventListener("click", function(event) {
+                        event.stopPropagation(); // 다른 이벤트 차단
+
+                        if (audio && !audio.paused) {
+                            // 🔇 **현재 재생 중이면 정지 & 아이콘 변경**
+                            audio.pause();
+                            audio.currentTime = 0; // 처음으로 되감기
+                            ttsImage.src = "{% static 'imgs/soundoff.png' %}"; // 🔇 음소거 아이콘
+                        } else {
+                            // 🔊 **재생 중이 아니면 새로운 오디오 객체 생성 및 재생**
+                            if (audio) {
+                                audio.pause(); // 기존 오디오 중지
+                            }
+                            audio = new Audio(data.audio_url);
+                            audio.play();
+                            ttsImage.src = "{% static 'imgs/sound.png' %}"; // 🔊 소리 켜짐 아이콘
+
+                            // **오디오가 끝나면 자동으로 아이콘 변경**
+                            audio.onended = function() {
+                                ttsImage.src = "{% static 'imgs/soundoff.png' %}";
+                            };
+                        }
+                    });
+                    aiDiv.appendChild(ttsImage);
                     chatBox.appendChild(aiDiv);
 
                     // 포인트 업데이트(자동화)
@@ -481,11 +529,6 @@
             }
         });
 
-        // 음성 파일 업로드 버튼 클릭 이벤트
-        document.getElementById("upload-audio-btn").addEventListener("click", () => {
-            document.getElementById("audioInput").click();
-        });
-
         // 음성 파일 업로드 처리
         document.getElementById("audioInput").addEventListener("change", async (event) => {
             const audioFile = event.target.files[0];
@@ -596,35 +639,6 @@
                 });
         }
 
-        // 🔊 TTS 기능 추가
-        document.getElementById("tts-btn").addEventListener("click", function() {
-            const lastBotMessage = document.querySelector(".bot-message:last-of-type");
-            if (!lastBotMessage) {
-                alert("AI 응답이 없습니다.");
-                return;
-            }
-            
-            const text = lastBotMessage.innerText;
-            const formData = new FormData();
-            formData.append("text", text);
-            formData.append("user_id", "1234");
-
-            fetch("./tts-api/", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.audio_url) {
-                    document.getElementById("tts-audio").src = data.audio_url;
-                    document.getElementById("tts-audio").play();
-                } else {
-                    alert("음성 변환 실패");
-                }
-            })
-            .catch(error => console.error("TTS 오류:", error));
-        });
-
         // 태그 리트리버
         document.querySelectorAll(".filter-btn").forEach(button => {
             button.addEventListener("click", function () {
@@ -664,6 +678,18 @@
                 console.error("리트리버 변경 실패:", error);
             }
         }
+
+        function updateActiveSession() {
+            document.querySelectorAll("#sessionList li").forEach(li => {
+                li.classList.remove("active");
+            });
+
+            let activeSession = document.querySelector(`#sessionList li[data-session-id="${currentSessionId}"]`);
+            if (activeSession) {
+                activeSession.classList.add("active");
+            }
+        }
+
     </script>
 </body>
 </html>

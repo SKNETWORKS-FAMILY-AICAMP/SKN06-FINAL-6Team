@@ -1,8 +1,8 @@
-{% extends "base.html" %}
-
+<!-- {% load static %}
 {% block content %}
     <h2>리뷰 게시판</h2>
     <a href="{% url 'review_create' %}">리뷰 작성</a>
+    <link rel="stylesheet" href="{% static 'css/chat.css' %}">
 
     <form method="GET">
         <input type="text" name="query" placeholder="메뉴 검색" value="{{ query }}">
@@ -50,58 +50,69 @@
             window.location.search = queryParams.toString();
         }
     </script>
+{% endblock %} -->
 
-    <style>
-        .review-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .review-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            flex-wrap: wrap;
-        }
-        .menu-name, .author-name {
-            width: 150px;
-            text-align: center;
-            font-weight: bold;
-            border: 1px solid black;
-            padding: 5px;
-            text-decoration: none;
-            color: black;
-        }
-        .author-name:hover {
-            color: blue;
-            text-decoration: underline;
-        }
-        .rating {
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            user-select: none;
-        }
-        .star-display {
-            color: gold;
-        }
-        .rating-value {
-            font-size: 20px;
-            color: black;
-            font-weight: bold;
-        }
-        .review-text {
-            flex: 1;
-            font-size: 14px;
-            color: #555;
-        }
-        .views-count {
-            font-size: 14px;
-            color: gray;
-        }
-    </style>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/review_list.css' %}">
+</head>
+<body>
+    <!-- <div class="container"> -->
+        <h2>리뷰게시판</h2>
+        <div class="logo">
+            <img src="{% static 'imgs/logo.png' %}" alt="로고">
+        </div>
+        <div class="cookie">
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키">
+        </div>
+        <div class="user">
+            <img src="{% static 'imgs/user.png' %}"alt="사용자">
+        </div>
+
+    <!-- 검색 & 작성 & 정렬 그룹 -->
+    <div class="top-controls">
+        <!-- 검색 영역 -->
+        <div class="search-container">
+            <input type="text" class="search-box" placeholder="메뉴명을 검색하세요.">
+            <button class="search-btn">
+                <img src="{% static 'imgs/search.png' %}" alt="검색 버튼">
+            </button>
+        </div>
+
+        <!-- 작성 버튼 -->
+        <button class="write-btn">
+            <img src="{% static 'imgs/write.png' %}" alt="작성 버튼">
+        </button>
+
+        <!-- 정렬 옵션 -->
+        <div class="sort-container">
+            <span class="sort-option">최신순</span>
+            <button class="sort-arrow">
+                <img src="{% static 'imgs/under.png' %}" alt="화살표 버튼">
+            </button>
+            <div class="sort-dropdown">
+                <span class="sort-item">최신순</span>
+                <span class="sort-item">별점순</span>
+                <span class="sort-item">조회순</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 리뷰 목록 -->
+    <div class="reviews-grid">
+        <div class="review-card">
+            <div class="review-image">
+                <img src="{% static 'imgs/user.png' %}" alt="db에 있는사진">
+            </div>
+            <h3 class="review-title">참치 김치찌개</h3>
+            <div class="review-stars">⭐⭐⭐⭐⭐</div>
+            <p class="review-user">hon***</p>
+            <p class="review-views">조회수 14</p>
+        </div>
+    </div>
+</body>
+</html>
