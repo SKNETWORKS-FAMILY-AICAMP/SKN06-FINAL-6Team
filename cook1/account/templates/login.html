@@ -64,6 +64,32 @@
         </div>
     </div>
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const loginForm = document.querySelector("form");  // 로그인 폼 선택
+
+            loginForm.addEventListener("submit", function(event) {
+                event.preventDefault();  // 기본 제출 막기
+
+                const formData = new FormData(loginForm);  // 폼 데이터 가져오기
+                fetch("{% url 'login' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect_url;  // 성공하면 채팅 페이지로 이동
+                    } else {
+                        if (confirm(data.message)) {
+                            // 사용자가 '확인'을 누르면 입력 필드를 초기화
+                            loginForm.reset();
+                        }
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+
         function showPassword(button) {
             var input = button.previousElementSibling;
             input.type = "text";

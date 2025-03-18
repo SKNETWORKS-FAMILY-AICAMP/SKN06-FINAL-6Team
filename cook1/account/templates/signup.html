@@ -77,6 +77,39 @@
     </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const signupForm = document.querySelector("form");
+
+            signupForm.addEventListener("submit", function(event) {
+                event.preventDefault();  // 기본 제출 막기
+
+                const formData = new FormData(signupForm);
+                fetch("{% url 'signup' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect_url;  // ✅ 가입 성공 시 프로필 페이지로 이동
+                    } else {
+                        if (data.type === "email") {
+                            // ✅ 이미 가입한 이메일이면 confirm 창 띄우기
+                            if (confirm(data.message)) {
+                                window.location.href = "{% url 'login' %}";  // 확인 클릭 시 로그인 페이지로 이동
+                            }
+                        } else if (data.type === "login_id") {
+                            // ✅ 중복된 아이디일 경우 alert 창 띄우기
+                            alert(data.message);
+                            signupForm.querySelector("input[name='login_id']").value = "";  // 아이디 입력 필드 초기화
+                        } else {
+                            alert(data.message);  // ✅ 기타 오류 메시지 처리
+                        }
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
         function showPassword(toggleButton) {
             var passwordInput = toggleButton.previousElementSibling; // 비밀번호 입력 필드 찾기
             passwordInput.type = "text"; // 비밀번호 보이기

@@ -12,6 +12,7 @@ from django.utils.timezone import now, timedelta
 import requests
 from django.contrib.sessions.models import Session
 from django.utils.timezone import now
+from django.http import JsonResponse
 
 
 User = get_user_model()
@@ -19,18 +20,32 @@ User = get_user_model()
 # 회원가입
 def signup(request):
     if request.method == 'POST':
+        login_id = request.POST.get('login_id')
+        email = request.POST.get('email')
+
+        # 이메일 중복 체크
+        if Users.objects.filter(email=email).exists():
+            return JsonResponse({'success': False, 'type': 'email', 'message': "이미 가입한 사용자입니다. 로그인하시겠습니까?"})
+
+        # 아이디 중복 체크
+        if Users.objects.filter(login_id=login_id).exists():
+            return JsonResponse({'success': False, 'type': 'login_id', 'message': "동일한 아이디가 존재합니다."})
+
+        # 회원가입 진행
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
             user.points = 200  # 기본 포인트 지급
             user.save()
             login(request, user)
-            return redirect('profile')
-        else:
-            print(form.errors)
+            return JsonResponse({'success': True, 'redirect_url': '/profile'})  # 가입 성공 시 프로필 페이지로 이동
+
+        return JsonResponse({'success': False, 'type': 'form', 'message': "입력값이 올바르지 않습니다."})
+
+    # GET 요청 시, 회원가입 페이지 렌더링
     else:
         form = CustomUserCreationForm()
-    return render(request, 'signup.html', {'form': form})
+        return render(request, 'signup.html', {'form': form})
 
 # 로그인
 def login_view(request):
@@ -42,11 +57,12 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            return redirect('chat')
+            return JsonResponse({'success': True, 'redirect_url': '/chat'})  # 로그인 성공 시 채팅 페이지로 이동
         else:
-            messages.error(request, "아이디 또는 비밀번호가 올바르지 않습니다.")
+            return JsonResponse({'success': False, 'message': "아이디 또는 비밀번호가 올바르지 않습니다."})  # 실패 메시지 반환
 
     return render(request, 'login.html')
+
 
 # 로그아웃
 def logout_view(request):
