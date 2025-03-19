@@ -7,20 +7,62 @@
     <title>비밀번호 찾기</title>
     <link rel="stylesheet" href="{% static 'css/find_pw.css' %}">
 </head>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            // 인증번호 입력창을 표시할지 확인
-            {% if request.session.show_verification %}
-                document.getElementById("verification-section").classList.remove("hidden");
-            {% endif %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const nameInput = document.querySelector('input[name="name"]');
+        const idInput = document.querySelector('input[name="login_id"]');
+        const emailInput = document.querySelector('input[name="email"]');
 
-            // 비밀번호 재설정 폼을 표시할지 확인
-            {% if request.session.is_verified %}
-                document.getElementById("verification-section").classList.add("hidden");
-                document.getElementById("reset-password-section").classList.remove("hidden");
-            {% endif %}
+        // 로컬스토리지에서 값 불러오기
+        nameInput.value = localStorage.getItem("find_pw_name") || "";
+        idInput.value = localStorage.getItem("find_pw_login_id") || "";
+        emailInput.value = localStorage.getItem("find_pw_email") || "";
+
+        // 입력값 로컬스토리지에 저장
+        [nameInput, idInput, emailInput].forEach(input => {
+            input.addEventListener("input", () => {
+                localStorage.setItem("find_pw_name", nameInput.value);
+                localStorage.setItem("find_pw_login_id", idInput.value);
+                localStorage.setItem("find_pw_email", emailInput.value);
+            });
         });
-    </script>
+
+        // 인증번호 요청
+        const otpBtn = document.getElementById("send-otp-btn");
+        otpBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+            fetch("{% url 'send_otp_email' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    name: nameInput.value,
+                    login_id: idInput.value,
+                    email: emailInput.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("인증번호가 이메일로 전송되었습니다!");
+                    document.getElementById("verification-section").classList.remove("hidden");
+                } else {
+                    alert(data.message || "인증번호 전송에 실패했습니다.");
+                }
+            });
+        });
+
+        // 기존 세션 알림 처리
+        {% if request.session.show_verification %}
+            document.getElementById("verification-section").classList.remove("hidden");
+        {% endif %}
+    });
+</script>
+
 </head>
 
 <body>
@@ -46,7 +88,7 @@
         </div>
         <div class="verify-group">
             <input type="email" placeholder="이메일" name="email" required value="{{ request.POST.email|default_if_none:'' }}" class="email-input">
-            <button class="verify-btn">인증번호 받기</button>
+            <button type="button" class="verify-btn" id="send-otp-btn">인증번호 받기</button>
         </div>
     </form>
 
