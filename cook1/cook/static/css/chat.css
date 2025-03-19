@@ -447,3 +447,14 @@ h4 {
     background-color: rgba(0, 0, 255, 0.519);
     color: white;
 }
+
+/* 채팅창 내 이미지 (bot-message, user-message 공통) */
+.user-message img,
+.bot-message img {
+    cursor: pointer;
+}
+
+/* 태그 버튼 (filter-btn) */
+.filter-btn {
+    cursor: pointer;
+}
