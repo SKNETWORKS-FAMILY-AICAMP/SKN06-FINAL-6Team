@@ -75,8 +75,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'cookit',
         'USER': 'ucandoit',
-        'PASSWORD': 'cookitcookeat',
-        'HOST': 'cookitcookeat.cluster-cfwm602q8xg8.ap-northeast-2.rds.amazonaws.com',
+        'PASSWORD': '',
+        'HOST': '',
         'PORT': '3306',
     }
 }
