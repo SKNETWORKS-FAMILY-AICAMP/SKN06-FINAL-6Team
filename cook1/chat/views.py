@@ -77,7 +77,6 @@ def chat_api(request, session_id):
                     "message": formatted_response,
                     "chat_history": request.session["chat_history"],
                     "detected_ingredients": list(detected_ingredients),
-                    "image_urls": image_urls
                 })
             
             # 로그인 한 사용자
@@ -165,7 +164,6 @@ def chat_api(request, session_id):
                     "message": formatted_response,
                     "chat_history": existing_messages,
                     "detected_ingredients": list(detected_ingredients),
-                    "image_urls": image_urls,
                     "current_points": current_points,
                     "audio_url": audio_url,
                 })
