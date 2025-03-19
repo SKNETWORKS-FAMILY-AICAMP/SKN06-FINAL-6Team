@@ -1,0 +1,696 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅</title>
+    <link rel="stylesheet" href="{% static 'css/chat.css' %}">
+</head>
+<body>
+    <div class="header">
+        {% if request.user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
+
+            <div id="myModal" class="modal"> 
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h2>🍪 쿠키 안내</h2>
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+                    <ul>
+                        <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                        <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                        <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                        <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+        {% endif %}
+    </div>
+    
+    {% if request.user.is_authenticated %}
+        <div id="sidebar">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 70px; height:65px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
+            <div class="icons-container">
+                <img src="{% static 'imgs/review_chat.png' %}" class="sidebar-icon" onclick="location.href='{% url 'review_list' %}'">
+                <img src="{% static 'imgs/plus.png' %}" class="sidebar-icon" onclick="startNewChat()">
+            </div>
+            <h2>이전 채팅 목록</h2>
+            <ul id="sessionList"></ul>
+            {% if grouped_messages %}
+                {% for date, messages in grouped_messages.items %}
+                <h4>{{ date }}</h4>
+                <ul>
+                    {% for message in messages %}
+                        <li>
+                            <button onclick="showChat('{{ message.session_id }}')">{{ message.title }}</button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endfor %}
+        {% endif %}
+        </div>
+    {% endif %}
+
+    <div id="chat-container">
+        <div id="chat-box"></div>
+
+            <div id="recording-indicator" style="display:none; width:100%; height:6px; background-color:#eee; margin-top:10px;">
+                <div id="recording-progress" style="width:0%; height:100%; background-color:blue;"></div>
+            </div>
+            <div id="filter-buttons">
+                <button class="filter-btn" data-filter="man">일반</button>
+                <button class="filter-btn" data-filter="fun">편스토랑</button>
+                <button class="filter-btn" data-filter="ref">냉부</button>
+            </div>
+
+        <form method="POST" id="input-box">
+            {% csrf_token %}
+            <label id="imageLabel" for="imageInput">
+                <img src="{% static 'imgs/image.png' %}" alt="camera" id="uploadIcon">
+            </label>
+            <input type="file" id="imageInput" accept="image/*" onchange="previewImages()">
+            <div id="imagePreviewContainer"></div>
+            <img src="{% static 'imgs/mic.png' %}" alt="음성 입력" id="mic-button"/>
+            <input type="file" id="audioInput" accept="audio/*" style="display:none;">
+            <input type="text" name="message" id="message-input" placeholder="메시지를 입력하세요">
+            <img src="{% static 'imgs/send.png' %}" alt="보내기" id="send-btn"/>
+        </form>
+    </div>
+
+        <!-- 이미지 확대 모달 -->
+        <div id="imageModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeImageModal()">&times;</span>
+                <img id="modalImage" src="" alt="Expanded Image">;
+            </div>
+        </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            loadChatSessions();
+        });
+        
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
+        let currentSessionId = null;
+
+        async function loadChatSessions() {
+            try {
+                let response = await fetch("./sessions/");
+                let data = await response.json();
+                let sessionList = document.getElementById("sessionList");
+                sessionList.innerHTML = "";
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    sessionList.innerHTML = "<p>저장된 채팅이 없습니다.</p>";
+                    startNewChat();
+                    return;
+                }
+                
+                data.sessions.forEach((session, index) => {
+                    let li = document.createElement("li");
+                    li.setAttribute("data-session-id", session.session_id);
+                    li.style.listStyleType = "none";
+
+                    li.innerHTML = `
+                        <div class="session-item">
+                            <span onclick="loadChatHistory('${session.session_id}')">${session.title} ${session.summary}</span>
+                            <button class="delete-btn" onclick="deleteChat('${session.session_id}')">✖</button>
+                        <div>
+                    `;
+                
+                    if (session.session_id === currentSessionId) {
+                        li.classList.add("active");
+                    }
+
+                    li.addEventListener("click", async () => {
+                        currentSessionId = session.session_id; // 현재 세션 업데이트
+                        await loadChatHistory(currentSessionId);
+                        setTimeout(updateActiveSession, 100);
+                    });
+
+                    sessionList.appendChild(li);
+                });
+
+                if (currentSessionId) {
+                    await loadChatHistory(currentSessionId);
+                    setTimeout(updateActiveSession, 100);
+                }
+                else{
+                    startNewChat()
+                }
+            } catch (error) {
+                console.error("세션 목록 불러오기 실패:", error);
+            }
+        }
+
+        // 특정 세션의 대화 내역 불러오기
+        async function startNewChat() {
+            try {
+                const response = await fetch("./new_chat/", {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCsrfToken() }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("새 채팅이 시작되었습니다.");
+
+                    currentSessionId = data.chat_id; 
+                    document.getElementById("chat-box").innerHTML = "";
+                    
+                    loadChatSessions();
+                } else {
+                    alert("새 채팅을 생성할 수 없습니다.");
+                }
+            } catch (error) {
+                console.error("새 채팅 생성 실패:", error);
+                alert("새 채팅을 생성하는 중 오류가 발생했습니다.");
+            }
+        }
+
+        async function loadChatHistory(sessionId) {
+            try {
+                let response = await fetch(`./history/${sessionId}/`);
+                let data = await response.json();
+                let chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = ""; 
+
+                currentSessionId = sessionId;
+
+                document.querySelectorAll("#sessionList li").forEach(li => {
+                    li.classList.remove("active");
+                    if (li.textContent === data.title) {
+                        li.classList.add("active");
+                    }
+                });
+
+                data.messages.forEach(msg => {
+                    let messageDiv = document.createElement("div");
+                    
+                    let className = msg.sender === "AI" ? "bot-message" : "user-message";
+                    messageDiv.classList.add("message", className);
+
+                    // AI 메시지는 왼쪽 정렬, 사용자 메시지는 오른쪽 정렬
+                    messageDiv.style.alignSelf = msg.sender === "AI" ? "flex-start" : "flex-end";
+
+                    messageDiv.innerHTML = msg.content;
+
+                    chatBox.appendChild(messageDiv);
+                });
+
+                scrollToBottom();
+            } catch (error) {
+                console.error("채팅 내역 불러오기 실패:", error);
+            }
+        }
+
+        let isSending = false;
+
+        async function sendMessage() {
+            if (isSending) return;
+            isSending = true;
+
+            const messageInput = document.getElementById("message-input");
+            const chatBox = document.getElementById("chat-box");
+            const message = messageInput.value.trim();
+
+            if (!message && selectedImages.length === 0) {
+                alert("메시지 또는 이미지를 입력하세요.");
+                isSending = false;
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("message", message);
+
+            let uploadedImages = [];
+            selectedImages.forEach(file => {
+                formData.append("images", file);
+                uploadedImages.push(URL.createObjectURL(file));
+            });
+
+            // 사용자 메시지 표시
+            let userMessageHTML = `<div class="message user-message" style="align-self: flex-end;">${message}`;
+            uploadedImages.forEach(imgSrc => {
+                userMessageHTML += `<img src="${imgSrc}" alt="Uploaded Image">`;
+            });
+            userMessageHTML += `</div>`;
+            chatBox.innerHTML += userMessageHTML;
+
+            // 입력 필드 초기화
+            messageInput.value = "";
+            selectedImages = []; // 업로드한 이미지 리스트 초기화
+            document.getElementById("imagePreviewContainer").innerHTML = "";
+
+            try {
+                const response = await fetch(`./chat_api/${currentSessionId}/`, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-CSRFToken": getCsrfToken() }
+                });
+
+                const data = await response.json();
+                
+
+                if (data.success) {
+                    // AI 응답을 왼쪽 정렬로 표시
+                    let aiDiv = document.createElement("div");
+                    aiDiv.classList.add("message", "bot-message");
+                    aiDiv.style.alignSelf = "flex-start";
+                    
+                    // 감지된 재료 추가
+                    let detectedText ="";
+                    if (data.detected_ingredients && data.detected_ingredients.length > 0) {
+                        detectedText = `<strong>🔍 감지된 재료: ${data.detected_ingredients.join(", ")}</strong><br><br>`;
+                    }
+                    aiDiv.innerHTML = detectedText + data.message;
+
+                    // 여러 이미지 출력 
+                    if (data.image_urls && data.image_urls.length > 0) {
+                        data.image_urls.forEach(imgSrc => {
+                            aiDiv.innerHTML += `<img src="${imgSrc}" alt="Bot Image">`;
+                        });
+                    }
+                    // 소리 버튼 
+                    const ttsImage = document.createElement("img");
+                    ttsImage.src = "{% static 'imgs/sound.png' %}"; // 기본값: 소리 켜짐
+                    ttsImage.alt = "TTS 듣기";
+                    ttsImage.style.cursor = "pointer";
+                    ttsImage.style.width = "24px";
+                    ttsImage.style.height = "24px";
+
+                    let audio = null; // 현재 재생 중인 오디오 객체 저장용
+
+                    ttsImage.addEventListener("click", function(event) {
+                        event.stopPropagation(); // 다른 이벤트 차단
+
+                        if (audio && !audio.paused) {
+                            // 🔇 **현재 재생 중이면 정지 & 아이콘 변경**
+                            audio.pause();
+                            audio.currentTime = 0; // 처음으로 되감기
+                            ttsImage.src = "{% static 'imgs/soundoff.png' %}"; // 🔇 음소거 아이콘
+                        } else {
+                            // 🔊 **재생 중이 아니면 새로운 오디오 객체 생성 및 재생**
+                            if (audio) {
+                                audio.pause(); // 기존 오디오 중지
+                            }
+                            audio = new Audio(data.audio_url);
+                            audio.play();
+                            ttsImage.src = "{% static 'imgs/sound.png' %}"; // 🔊 소리 켜짐 아이콘
+
+                            // **오디오가 끝나면 자동으로 아이콘 변경**
+                            audio.onended = function() {
+                                ttsImage.src = "{% static 'imgs/soundoff.png' %}";
+                            };
+                        }
+                    });
+                    aiDiv.appendChild(ttsImage);
+                    chatBox.appendChild(aiDiv);
+
+                    
+                    // 포인트 업데이트(자동화)
+                    if (data.current_points !== undefined) {
+                        document.getElementById("cookie-count").textContent = `${data.current_points}개`;
+                    }
+
+                    if (data.current_points <= 0) {
+                        alert("포인트가 부족합니다. 채팅을 더 이상 할 수 없습니다.");
+                        document.getElementById("send-btn").disabled = true; // 채팅 버튼 비활성화
+                    }
+                } else {
+                    alert("오류 발생: " + data.error);
+                }
+            } catch (error) {
+                console.error("메시지 전송 오류:", error);
+            }
+
+            isSending = false;
+            scrollToBottom();
+        }
+
+        async function deleteChat(sessionId) {
+            if (!confirm("정말 삭제하시겠습니까?")) return;
+
+            try {
+                let response = await fetch(`./delete/${sessionId}/`, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": getCsrfToken() }
+                });
+
+                let data = await response.json();
+                if (data.success) {
+                    alert("채팅이 삭제되었습니다.");
+                    loadChatSessions();
+                } else {
+                    alert("삭제 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("채팅 삭제 실패:", error);
+            }
+        }
+
+        function playTTS(audio_url) {
+        if (audio_url) {
+            const audio = new Audio(audio_url);
+            audio.play();
+        } else {
+            alert("음성 파일이 없습니다.");
+        }
+        }
+
+        // 이미지 클릭 시 모달을 열고 확대된 이미지 표시
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById("imageModal");
+            const modalImage = document.getElementById("modalImage");
+            modal.style.display = "flex";
+            modalImage.src = imageSrc;
+        }
+
+        function closeImageModal() {
+            document.getElementById("imageModal").style.display = "none";
+        }
+
+        document.getElementById("chat-box").addEventListener("click", function(event) {
+            if (event.target.tagName === "IMG") {
+                openImageModal(event.target.src);
+            }
+        });
+
+        // esc 버튼 누르면 이미지 모달 닫기
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                closeImageModal();
+            }
+        });
+
+        let selectedImages = [];    // 업로드한 이미지들을 저장할 배열
+
+        function previewImages() {
+            const imageInput = document.getElementById("imageInput");
+            const previewContainer = document.getElementById("imagePreviewContainer");
+            let newFiles = Array.from(imageInput.files);
+
+            // 새로운 파일이 기존 배열에 추가되도록 함
+            selectedImages = [...selectedImages, ...newFiles];
+
+            // 중복 제거 (파일 이름 기준)
+            const uniqueFiles = [];
+            const fileNames = new Set();
+            selectedImages.forEach(file => {
+                if (!fileNames.has(file.name)) {
+                    uniqueFiles.push(file);
+                    fileNames.add(file.name);
+                }
+            });
+
+            selectedImages = uniqueFiles; // 중복 제거된 파일 리스트 적용
+            previewContainer.innerHTML = ""; // 기존 미리보기 초기화 후 다시 그림
+            selectedImages.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const imgWrapper = document.createElement("div");
+                    imgWrapper.classList.add("image-wrapper");
+
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.alt = "Uploaded Image";
+                    img.onclick = function () { openImageModal(e.target.result);};
+
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.innerHTML = "✖";
+                    deleteBtn.onclick = function () {
+                        removeImage(index);
+                    };
+
+                    imgWrapper.appendChild(img);
+                    imgWrapper.appendChild(deleteBtn);
+                    previewContainer.appendChild(imgWrapper);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            imageInput.value = ""; // 파일 선택 창 초기화
+        }  
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            previewImages();    // 미리보기 갱신
+        }
+
+        document.getElementById("send-btn").addEventListener("click", sendMessage);
+        document.getElementById("message-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function toggleDropdown() {
+            document.getElementById('dropdown-menu').classList.toggle('show');
+        }
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("dropdown-menu");
+            let profileContainer = document.querySelector(".profile-img-container");
+
+            if (!profileContainer.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove("show");
+            }
+        });
+
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+        
+        function scrollToBottom() {
+            let chatBox = document.getElementById("chat-box");
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        // 음성 인식
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR';
+            recognition.interimResults = false;
+
+            recognition.onstart = function () {
+                console.log('음성 인식 시작');
+            };
+
+            recognition.onspeechend = function () {
+                recognition.stop();
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('message-input').value = transcript;
+            };
+
+            recognition.onerror = function (event) {
+                console.error('음성 인식 오류:', event.error);
+            };
+
+            recognition.start();
+        }
+
+        // 마이크 버튼 클릭 이벤트 핸들러 수정 (녹음 or 파일 업로드 선택)
+        document.getElementById("mic-button").addEventListener("click", () => {
+            const choice = confirm("직접 음성을 녹음하시겠습니까? (취소 시 음성 파일 업로드)");
+            if (choice) {
+                startSpeechRecording();
+            } else {
+                document.getElementById("audioInput").click();
+            }
+        });
+
+        // 음성 파일 업로드 처리
+        document.getElementById("audioInput").addEventListener("change", async (event) => {
+            const audioFile = event.target.files[0];
+            if (!audioFile) return;
+
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+
+            try {
+                const response = await fetch('./stt-api/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.text) {
+                    document.getElementById('message-input').value = data.text;
+                } else {
+                    alert("음성을 인식하지 못했습니다.");
+                }
+            } catch (error) {
+                console.error("STT 요청 중 오류:", error);
+                alert("STT 처리 중 오류가 발생했습니다.");
+            }
+        });
+
+        // 🎤 음성 직접 녹음 후 Whisper API로 변환하여 메시지 입력창에 출력하는 기능
+        function startSpeechRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+
+                    const indicator = document.getElementById("recording-indicator");
+                    const progress = document.getElementById("recording-progress");
+
+                    let recordingTime = 0;
+                    const maxTime = 4000; // 녹음 최대 시간 (4초)
+
+                    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+
+                    mediaRecorder.onstop = async () => {
+                        indicator.style.display = "none";
+                        progress.style.width = "0%";
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'recording.webm');
+
+                        try {
+                            const response = await fetch('./stt-api/', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const data = await response.json();
+                            if (data.text) {
+                                document.getElementById('message-input').value = data.text;
+                            } else {
+                                alert("음성을 인식하지 못했습니다.");
+                            }
+                        } catch (error) {
+                            console.error("STT 요청 중 오류 발생:", error);
+                            alert("STT 요청 중 오류가 발생했습니다.");
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    indicatorReset();
+
+                    indicatorStart(); // 진행바 시작
+
+                    function indicatorStart() {
+                        indicatorReset();
+                        indicatorUpdate();
+                    }
+
+                    function indicatorUpdate() {
+                        recordingTime += 100;
+                        const percentage = (recordingTime / maxTime) * 100;
+                        progress.style.width = `${percentage}%`;
+
+                        if (recordingTime < maxTime) {
+                            setTimeout(indicatorUpdate, 100);
+                        }
+                    }
+
+                    function indicatorReset() {
+                        indicator.style.display = 'block';
+                        progress.style.width = "0%";
+                        recordingTime = 0;
+                    }
+
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                        indicatorReset();
+                    }, maxTime);
+                    
+                    function indicatorReset() {
+                        indicator.style.display = "block";
+                        progress.style.width = "0%";
+                    }
+                })
+                .catch(error => {
+                    console.error("마이크 접근 오류:", error);
+                    alert("마이크 접근이 허용되지 않았습니다.");
+                });
+        }
+
+        // 태그 리트리버
+        document.querySelectorAll(".filter-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                this.classList.toggle("active");  // 현재 버튼의 활성화 상태만 변경
+
+                let isman = document.querySelector("[data-filter='man']").classList.contains("active");
+                let isfun = document.querySelector("[data-filter='fun']").classList.contains("active");
+                let isref = document.querySelector("[data-filter='ref']").classList.contains("active");
+
+                // 아무것도 선택 안 되면 기본 설정 (모든 리트리버)
+                if (!isman && !isfun && !isref) {
+                    updateRetriever({isman: false, isfun: false, isref: false});
+                } else {
+                    updateRetriever({isman, isfun, isref});
+                }
+            });
+        });
+
+        async function updateRetriever(filters) {
+            try {
+                const response = await fetch("./update_retriever/", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCsrfToken(),
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(filters)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("설정이 변경되었습니다.");
+                } else {
+                    alert("리트리버 설정 변경 실패: " + data.error);
+                }
+            } catch (error) {
+                console.error("리트리버 변경 실패:", error);
+            }
+        }
+
+        function updateActiveSession() {
+            document.querySelectorAll("#sessionList li").forEach(li => {
+                li.classList.remove("active");
+            });
+
+            let activeSession = document.querySelector(`#sessionList li[data-session-id="${currentSessionId}"]`);
+            if (activeSession) {
+                activeSession.classList.add("active");
+            }
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+/* 전체 화면 flex 배치 */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+}
+
+.header {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 메인 컨테이너 (왼쪽 배경 + 오른쪽 콘텐츠) */
+.container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* 왼쪽 배경 영역 */
+.left-section {
+    width: 30%;
+    background-image: url('./imgs/back.png'); /* 배경 이미지 */
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 30px;
+}
+
+.homelogo img{
+    position:absolute;
+    width: 30%;
+    height: auto;
+    top: 30px;
+    cursor: pointer;
+}
+
+.description {
+    position: absolute;
+    top: 50%; /* 부모 요소의 50% 높이에서 시작 */
+    left: 50%; /* 부모 요소의 50% 가로에서 시작 */
+    transform: translate(-50%, -50%); /* 정확히 중앙 정렬 */
+    text-align: center;
+    font-size: 27px;
+    font-weight: bold;
+    width: 80%; /* 문장이 너무 길어지는 것을 방지 */
+    line-height: 1; /* 줄 간격 조정 */
+    white-space: pre-line; /* HTML에서 개행한 대로 줄바꿈 적용 */
+}
+
+/* 대화하기 버튼 */
+.chat-btn {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    background-color: #c2cff5;
+    color: rgb(255, 255, 255);
+    border: none;
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* 오른쪽 콘텐츠 영역 */
+.right-section {
+    width: 65%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.cookie-icon {
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.profile-img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+/* 드롭다운 메뉴 */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: 150px;
+    z-index: 1000;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 10px 15px;
+    color: black;
+    text-decoration: none;
+    font-size: 14px;
+    text-align: center;
+}
+
+.dropdown-menu a:hover {
+    background-color: #f5f5f5;
+}
+
+.dropdown-menu .logout {
+    color: white;
+    background-color: #FBD2D2;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+}
+
+.dropdown-menu .logout:hover {
+    background-color: #fb9f9f;
+}
+
+/* 쿠키 모달창 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+
+.modal-content h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.modal-content p {
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.modal-content ul {
+    list-style: none;
+    padding: 0;
+}
+
+.modal-content ul li {
+    margin: 8px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-content ul li span {
+    font-size: 18px;
+}
+
+.close-btn {
+    color: #555;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #FBD2D2;
+}
+
+/* Sign in 버튼 */
+.sign-in-btn {
+    position: absolute;
+    white-space: nowrap;
+    top: 20px;
+    right: 10px;
+    background-color: #c2cff5;
+    color: rgb(255, 255, 255);
+    border: none;
+    padding: 8px 12px;
+    font-size: 20px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* 영상 컨테이너 */
+.video-container {
+    width: 80%;
+    max-width: 700px;
+    height: auto;
+    display: flex;
+    justify-content: center;
+}
+
+video {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+/* 동그라미 슬라이드 표시 */
+.dots {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.dot {
+    width: 7px;
+    height: 7px;
+    margin: 10px;
+    background-color: #dcdcdc;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.dot.active {
+    background-color: #575757; /* 현재 선택된 슬라이드 색 */
+}

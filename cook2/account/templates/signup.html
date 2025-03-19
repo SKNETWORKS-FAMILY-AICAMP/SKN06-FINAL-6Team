@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입</title>
+    <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h2>회원가입</h2>
+        <div class="logo">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
+        </div>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+        
+            <!-- 프로필 사진 업로드 -->
+            <!-- 프로필 사진 업로드 -->
+        <div class="profile">
+            <!-- 기존 프로필 사진을 불러오고, 없으면 기본 이미지 표시 -->
+            <img id="profile-preview" class="profile-img"
+                src="{% if form.instance.user_photo %}{{ form.instance.user_photo.url }}{% else %}{% static 'imgs/user.png' %}{% endif %}"
+                alt="프로필 사진">
+            <img class="camera-img" src="{% static 'imgs/camera.png' %}" alt="카메라 사진" onclick="triggerFileInput()">
+        </div>
+
+<!-- Django 폼의 파일 업로드 필드 (숨김 처리) -->
+<div style="display: none;">
+    {{ form.user_photo }}
+</div>
+
+            <div class="input-group">
+                {{ form.login_id }}
+            </div>
+
+            <div class="input-group">
+                {{ form.password1 }}
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 표시"
+                     class="toggle-password" 
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)"
+                     onmouseleave="hidePassword(this)">
+            </div>
+            
+            <div class="input-group">
+                {{ form.password2 }}
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 확인 표시"
+                     class="toggle-password" 
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)"
+                     onmouseleave="hidePassword(this)">
+            </div>
+            
+            
+
+            <div class="input-group">
+                {{ form.email }}
+            </div>
+
+            <div class="input-group">
+                {{ form.name }}
+            </div>
+            <div class="input-group">
+                {{ form.birthday }}
+            </div>
+            
+            <div class="input-group">
+                {{form.nickname}}
+            </div>
+
+            <div class="button-container">
+                <button class="signup-btn">가입하기</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const signupForm = document.querySelector("form");
+
+            signupForm.addEventListener("submit", function(event) {
+                event.preventDefault();  // 기본 제출 막기
+
+                const formData = new FormData(signupForm);
+                fetch("{% url 'signup' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect_url;  // ✅ 가입 성공 시 프로필 페이지로 이동
+                    } else {
+                        if (data.type === "email") {
+                            // ✅ 이미 가입한 이메일이면 confirm 창 띄우기
+                            if (confirm(data.message)) {
+                                window.location.href = "{% url 'login' %}";  // 확인 클릭 시 로그인 페이지로 이동
+                            }
+                        } else if (data.type === "login_id") {
+                            // ✅ 중복된 아이디일 경우 alert 창 띄우기
+                            alert(data.message);
+                            signupForm.querySelector("input[name='login_id']").value = "";  // 아이디 입력 필드 초기화
+                        } else {
+                            alert(data.message);  // ✅ 기타 오류 메시지 처리
+                        }
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+        function showPassword(toggleButton) {
+            var passwordInput = toggleButton.previousElementSibling; // 비밀번호 입력 필드 찾기
+            passwordInput.type = "text"; // 비밀번호 보이기
+            toggleButton.src = "{% static 'imgs/eye.png' %}"; // 아이콘 변경
+        }
+
+        function hidePassword(toggleButton) {
+            var passwordInput = toggleButton.previousElementSibling; // 비밀번호 입력 필드 찾기
+            passwordInput.type = "password"; // 비밀번호 숨기기
+            toggleButton.src = "{% static 'imgs/noeye.png' %}"; // 아이콘 원래대로
+        }
+
+
+        function triggerFileInput() {
+            document.getElementById('id_user_photo').click();
+        }
+
+        function previewProfile(event) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                var output = document.getElementById('profile-preview');
+                output.src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+    </script>
+
+</body>
+</html>
