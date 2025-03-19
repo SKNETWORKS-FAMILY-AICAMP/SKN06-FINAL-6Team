@@ -230,7 +230,7 @@
  - 리뷰게시판, 리뷰작성, 리뷰 자세히보기, 리뷰 수정하기
 </br>
 ## DB설계 
-![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/DB%20Table.png)
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/DB.png)
  - Users ↔ Chats, Reviews,  HistoryChat, UserSelectedMenus(1:N)
  </br>
  - ChatSession ↔ UserSelectedMenus (1:N) 
@@ -288,7 +288,7 @@
 - YOLO로 탐지된 객체가 없거나, 탐지된 객체의 신뢰도가 0.4 미만인 경우 CLIP 보완 탐지 수행</br>
 - CLIP 보완 탐지 결과 유사도 값이 0.5 이상인 것만 출력
 => 최종 모델 평가
-
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/object%20detection%20%ED%8F%89%EA%B0%80.png)
 > Precision : 0.86
 >
 >  Recall : 0.69
@@ -353,6 +353,7 @@
 
 ### Vector DB 및 Retriever
 **시나리오**
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%EC%8B%9C%EB%82%98%EB%A6%AC%EC%98%A4.png)
 > 재료만 입력하는 경우외의 여러 가지의 질문의 종류 존재
 >
 > → 사용자가 입력한 재료 기반 추천만 제공하는 것보다, 상황을 고려한 요리 추천이 필요
