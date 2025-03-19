@@ -41,11 +41,11 @@ def review_create(request):
             review = form.save(commit=False)
             review.user = request.user
 
-            # ✅ 선택한 메뉴 정보 저장
-            selected_menu = request.POST.get("selected_menu")
-            if selected_menu:
-                review.selected_menu = get_object_or_404(UserSelectedMenus, pk=selected_menu)
-
+            # 선택한 메뉴 정보 저장
+            selected_menu_id = request.POST.get("selected_menu")
+            if selected_menu_id:
+                selected_menu = get_object_or_404(UserSelectedMenus, id=selected_menu_id, user=request.user)
+                review.selected_menu = selected_menu
             review.save()
 
             for file in files:
@@ -54,8 +54,11 @@ def review_create(request):
             return redirect("review_detail", pk=review.pk)
     else:
         form = ReviewForm()
+
+    # 현재 로그인한 사용자의 저장된 메뉴 리스트 가져오기
+    menus = UserSelectedMenus.objects.filter(user=request.user)    
     
-    return render(request, "review_form.html", {"form": form})
+    return render(request, "review_form.html", {"form": form, "menus": menus})
 
 # 리뷰 수정 (기존 이미지 유지 + 새 이미지 추가 가능)
 @login_required

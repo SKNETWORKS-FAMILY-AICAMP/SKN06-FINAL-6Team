@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout, get_user_model
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import CustomUserCreationForm, FindIDForm, PasswordResetForm, FindPWForm, UserUpdateForm, EmailVerificationForm
@@ -13,6 +12,7 @@ import requests
 from django.contrib.sessions.models import Session
 from django.utils.timezone import now
 from django.http import JsonResponse
+from django.contrib.auth import update_session_auth_hash 
 
 
 User = get_user_model()
@@ -38,8 +38,8 @@ def signup(request):
             user.points = 200  # 기본 포인트 지급
             user.save()
             login(request, user)
-            return JsonResponse({'success': True, 'redirect_url': '/profile'})  # 가입 성공 시 프로필 페이지로 이동
-
+            return JsonResponse({'success': True, 'redirect_url': request.build_absolute_uri('/account/mypage')})  # 가입 성공 시 프로필 페이지로 이동(변경)
+        
         return JsonResponse({'success': False, 'type': 'form', 'message': "입력값이 올바르지 않습니다."})
 
     # GET 요청 시, 회원가입 페이지 렌더링
@@ -329,9 +329,10 @@ def mypage(request):
     user = Users.objects.get(pk=request.user.pk)
 
     if request.method == 'POST':
-        form = UserUpdateForm(request.POST, request.FILES, instance=user)  # ✅ 최신 정보 반영
+        form = UserUpdateForm(request.POST, request.FILES, instance=user)  # 최신 정보 반영
         if form.is_valid():
-            form.save()
+            user = form.save()
+            update_session_auth_hash(request, user)  # 비밀번호 변경 후 로그인 유지
             messages.success(request, "회원 정보가 수정되었습니다.")
             return redirect('chat')
     else:

@@ -1,4 +1,3 @@
-/* 전체 페이지 스타일 */
 body {
     display: flex;
     justify-content: center;
@@ -9,27 +8,41 @@ body {
     position: relative;
 }
 
-/* 리뷰게시판 컨테이너 */
-/* .container { */
-    /* width: 300px; 컨테이너 크기 */
-    /* margin: 0 auto; 가운데 정렬 */
-    /* align-items: center; */
-    /* text-align: center; 내부 요소 텍스트 가운데 정렬 */
-/* } */
-
-/* 리뷰게시판 제목 스타일 */
 h2 {
     position: absolute;
     top: 18px;
     left: 50%;
-    font-size: 24px; /* 글씨 크기 */
-    font-weight: bold; /* 글씨 굵기 */
-    margin-bottom: 20px; /* 아래 여백 */
-    color: #000; /* 글씨 색 */
+    font-size: 24px; 
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #000;
     text-align: center;
 }
 
-/* 왼쪽 상단 로고 */
+.header {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 999;
+}
+
+.cookie-icon {
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.profile-img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
 .logo img{
     position: absolute;
     width: 70px;
@@ -57,20 +70,115 @@ h2 {
     cursor: pointer;
 }
 
-/* 상단 컨트롤 (검색, 작성 버튼, 정렬 옵션 그룹) */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: 150px;
+    z-index: 1000;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 10px 15px;
+    color: black;
+    text-decoration: none;
+    font-size: 14px;
+    text-align: center;
+}
+.dropdown-menu a:hover {
+    background-color: #f5f5f5;
+}
+
+.dropdown-menu .logout {
+    color: white;
+    background-color: #FBD2D2;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+}
+
+.dropdown-menu .logout:hover {
+    background-color: #fb9f9f;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    position: relative;
+    background-color: white;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+.modal-content h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.modal-content p {
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.modal-content ul {
+    list-style: none;
+    padding: 0;
+}
+
+.modal-content ul li {
+    margin: 8px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    color: #555;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: red;
+}
+
 .top-controls {
     display: flex;
     position: absolute;
     top: 80px;
-    align-items: center;
-    justify-content: space-between; /* 좌우 정렬 */
+    align-items: right;
+    justify-content: space-between;
     width: 80%;
     max-width: 800px;
     margin-top: 10px;
-    gap: 15px; /* 요소 간격 */
+    gap: 15px;
 }
 
-/* 검색 영역 */
 .search-container {
     display: flex;
     align-items: center;
@@ -88,7 +196,6 @@ h2 {
     outline: none;
 }
 
-/* 검색 버튼 */
 .search-btn {
     background: none;
     border: none;
@@ -100,7 +207,6 @@ h2 {
     height: 24px;
 }
 
-/* 작성 버튼 */
 .write-btn {
     background: none;
     border: none;
@@ -112,7 +218,26 @@ h2 {
     height: 40px;
 }
 
-/* 정렬 옵션 */
+.sort-dropdown {
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 5px;
+    padding: 5px 0;
+    width: 100px;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+}
+
+.sort-dropdown .sort-item {
+    display: block;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
 .sort-container {
     display: flex;
     align-items: center;
@@ -120,13 +245,11 @@ h2 {
     position: relative;
 }
 
-/* 정렬 옵션 텍스트 */
 .sort-option {
     font-size: 16px;
     font-weight: bold;
 }
 
-/* 정렬 화살표 */
 .sort-arrow {
     background: none;
     border: none;
@@ -139,29 +262,6 @@ h2 {
     height: 18px;
 }
 
-/* 정렬 드롭다운 */
-.sort-dropdown {
-    display: none;
-    position: absolute;
-    top: 25px;
-    right: 0;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.sort-dropdown .sort-item {
-    padding: 10px;
-    display: block;
-    cursor: pointer;
-}
-
-.sort-dropdown .sort-item:hover {
-    background: #f0f0f0;
-}
-
-/* 리뷰 목록 (왼쪽 정렬) */
 .reviews-grid {
     display: flex;
     position: absolute;
@@ -173,7 +273,6 @@ h2 {
     width: 80%;
 }
 
-/* 개별 리뷰 카드 */
 .review-card {
     background: #FFFFFF;
     border-radius: 10px;
@@ -183,7 +282,6 @@ h2 {
     width: 200px; /* 카드 너비 */
 }
 
-/* 리뷰 이미지 */
 .review-image img{
     width: 100%;
     height: 150px;
@@ -196,14 +294,12 @@ h2 {
     cursor: pointer;
 }
 
-/* 리뷰 제목 */
 .review-title {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
 }
 
-/* 별점 */
 .review-stars {
     font-size: 14px;
     color: #FFD700;
@@ -211,7 +307,6 @@ h2 {
     cursor: pointer;
 }
 
-/* 리뷰 작성자 & 조회수 */
 .review-user, .review-views {
     font-size: 12px;
     color: #666;

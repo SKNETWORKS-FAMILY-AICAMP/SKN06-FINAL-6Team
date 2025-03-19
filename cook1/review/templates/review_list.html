@@ -61,17 +61,48 @@
     <link rel="stylesheet" href="{% static 'css/review_list.css' %}">
 </head>
 <body>
-    <!-- <div class="container"> -->
-        <h2>리뷰게시판</h2>
-        <div class="logo">
-            <img src="{% static 'imgs/logo.png' %}" alt="로고">
-        </div>
-        <div class="cookie">
-            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키">
-        </div>
-        <div class="user">
-            <img src="{% static 'imgs/user.png' %}"alt="사용자">
-        </div>
+    <div class="logo">
+        {% if user.is_authenticated %}
+            <a href="{% url 'chat' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="로고">
+            </a>
+        {% endif %}
+    </div>
+    
+    <h2>리뷰 게시판</h2>
+    <div class="header">
+        {% if request.user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
+
+            <div id="myModal" class="modal"> 
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h2>🍪 쿠키 안내</h2>
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+                    <ul>
+                        <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                        <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                        <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                        <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+        {% endif %}
+    </div>
 
     <!-- 검색 & 작성 & 정렬 그룹 -->
     <div class="top-controls">
@@ -82,24 +113,24 @@
                 <img src="{% static 'imgs/search.png' %}" alt="검색 버튼">
             </button>
         </div>
-
         <!-- 작성 버튼 -->
-        <button class="write-btn">
-            <img src="{% static 'imgs/write.png' %}" alt="작성 버튼">
-        </button>
-
+        <div class="write-btn">
+            <img src="{% static 'imgs/write.png' %}" alt="LOGO" onclick="location.href='{% url 'review_create' %}'">
+        </div>
+        
         <!-- 정렬 옵션 -->
         <div class="sort-container">
             <span class="sort-option">최신순</span>
-            <button class="sort-arrow">
+            <button class="sort-arrow" onclick="toggleDropdown()">
                 <img src="{% static 'imgs/under.png' %}" alt="화살표 버튼">
             </button>
-            <div class="sort-dropdown">
-                <span class="sort-item">최신순</span>
-                <span class="sort-item">별점순</span>
-                <span class="sort-item">조회순</span>
+            <div class="sort-dropdown" id="sortDropdown">
+                <span class="sort-item" onclick="selectSortOption(this)">최신순</span>
+                <span class="sort-item" onclick="selectSortOption(this)">별점순</span>
+                <span class="sort-item" onclick="selectSortOption(this)">조회순</span>
             </div>
         </div>
+        
     </div>
 
     <!-- 리뷰 목록 -->
@@ -111,8 +142,60 @@
             <h3 class="review-title">참치 김치찌개</h3>
             <div class="review-stars">⭐⭐⭐⭐⭐</div>
             <p class="review-user">hon***</p>
-            <p class="review-views">조회수 14</p>
+            <p class="review-views">조회수 {}</p>
         </div>
     </div>
+
+    <script>
+        // 상단바
+        function toggleDropdown() {
+            document.getElementById('dropdown-menu').classList.toggle('show');
+        }
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("dropdown-menu");
+            let profileContainer = document.querySelector(".profile-img-container");
+
+            if (!profileContainer.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove("show");
+            }
+        });
+
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+
+        // 정렬
+        function toggleDropdown() {
+            let dropdown = document.getElementById("sortDropdown");
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        }
+
+        function sortReviews(sortValue) {
+            const queryParams = new URLSearchParams(window.location.search);
+            queryParams.set('sort', sortValue || 'latest'); 
+            window.location.search = queryParams.toString();
+        }
+
+        // 드롭다운 옵션 선택 시 텍스트 변경 & 드롭다운 숨기기
+        function selectSortOption(element) {
+            document.querySelector(".sort-option").textContent = element.textContent;
+            document.getElementById("sortDropdown").style.display = "none";
+        }
+
+        // 다른 곳 클릭 시 드롭다운 숨기기
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("sortDropdown");
+            let container = document.querySelector(".sort-container");
+
+            if (!container.contains(event.target)) {
+                dropdown.style.display = "none";
+            }
+        });
+
+    </script>
 </body>
 </html>

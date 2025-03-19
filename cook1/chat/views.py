@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from chat.lcel.lcel import mkch
 from chat.utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
-from chat.models import ChatSession, HistoryChat
+from chat.models import ChatSession, HistoryChat, UserSelectedMenus
 import markdown
 import re
 import uuid
@@ -148,7 +148,10 @@ def chat_api(request, session_id):
                 history_record.messages = json.dumps(existing_messages, ensure_ascii=False)
                 history_record.save()
 
-                #  TTS 파일 자동 생성
+                # userselectedmenus에 저장
+                save_user_selected_menus(request, session_id)
+
+                # TTS 파일 자동 생성
                 audio_path = speech_processor.generate_speech(response, user_id)
                 audio_url = f"/{audio_path}" if audio_path else None 
 
@@ -375,3 +378,75 @@ def update_retriever(request):
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
+@csrf_exempt
+def save_user_selected_menus(request, session_id):
+    """
+    Extracts recipe names and images from chat history and saves them to UserSelectedMenus.
+    """
+    try:
+        # ✅ Get chat session
+        chat_session = ChatSession.objects.filter(session_id=session_id, user=request.user).first()
+        if not chat_session:
+            return JsonResponse({"success": False, "error": "Chat session not found."}, status=404)
+
+        # ✅ Get chat history
+        history = HistoryChat.objects.filter(session=chat_session).first()
+        if not history:
+            return JsonResponse({"success": False, "error": "No chat history found."}, status=404)
+
+        # ✅ Load messages (handle empty messages case)
+        try:
+            messages = json.loads(history.messages) if history.messages else []
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "Invalid JSON format in chat history"}, status=500)
+
+        # ✅ Extract recipe names and images from AI responses
+        recipe_pattern = re.compile(r"<h3>\d+\.\s*([^<\n]+)")  # <h3>1. 요리명</h3>에서 숫자 제거 후 요리명 추출
+        img_pattern = re.compile(r'<img\s+[^>]*src="([^"]+)"')  # <img src="URL">에서 URL만 추출
+
+        recipe_names = set()
+        recipe_images = {}  # {menu_name: img_url}
+
+        for message in messages:
+            if message["role"] == "ai":
+                # 🔹 메뉴명 추출
+                menu_names = recipe_pattern.findall(message["content"])
+                recipe_names.update(menu_names)
+
+                # 🔹 이미지 URL 추출
+                img_urls = img_pattern.findall(message["content"])
+
+                # 🔹 메뉴명과 이미지 매칭
+                for i, menu_name in enumerate(menu_names):
+                    img_url = img_urls[i] if i < len(img_urls) else None  # 이미지가 부족하면 None 저장
+                    recipe_images[menu_name] = img_url
+
+        # ✅ Debugging: print extracted recipe names and images
+        print("Extracted Recipes:", recipe_names)
+        print("Extracted Images:", recipe_images)
+
+        # ✅ Validate user model
+        if not isinstance(request.user, UserSelectedMenus._meta.get_field("user").related_model):
+            return JsonResponse({"success": False, "error": "Invalid user type"}, status=400)
+
+        # ✅ Save extracted menu names and images to UserSelectedMenus model
+        for menu_name in recipe_names:
+            img_url = recipe_images.get(menu_name, None)  # Get corresponding image URL
+
+            obj, created = UserSelectedMenus.objects.get_or_create(
+                user=request.user,
+                menu_name=menu_name,
+                defaults={"img_url": img_url}  # ✅ 이미지 URL도 저장
+            )
+            
+            if not created and obj.img_url != img_url:  # ✅ 이미지 URL이 변경되었으면 업데이트
+                obj.img_url = img_url
+                obj.save()
+
+            if created:
+                print(f"Saved: {menu_name} with image {img_url}")
+
+        return JsonResponse({"success": True, "saved_menus": list(recipe_names), "saved_images": recipe_images})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

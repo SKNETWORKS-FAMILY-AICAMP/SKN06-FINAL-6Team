@@ -44,7 +44,7 @@
     
     {% if request.user.is_authenticated %}
         <div id="sidebar">
-            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 120%; max-width: 90px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
+            <img src="{% static 'imgs/logo.png' %}" alt="LOGO" style="width: 70px; height:65px; cursor: pointer;" onclick="location.href='{% url 'home' %}'">
             <div class="icons-container">
                 <img src="{% static 'imgs/review_chat.png' %}" class="sidebar-icon" onclick="location.href='{% url 'review_list' %}'">
                 <img src="{% static 'imgs/plus.png' %}" class="sidebar-icon" onclick="startNewChat()">
@@ -325,6 +325,7 @@
                     aiDiv.appendChild(ttsImage);
                     chatBox.appendChild(aiDiv);
 
+                    
                     // 포인트 업데이트(자동화)
                     if (data.current_points !== undefined) {
                         document.getElementById("cookie-count").textContent = `${data.current_points}개`;
