@@ -390,7 +390,11 @@
      → 대용량 데이터에서도 효율적 운영 가능</br>
 ### 결과
 **비회원인 경우**
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%EB%B9%84%ED%9A%8C%EC%9B%901.png)
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%EB%B9%84%ED%9A%8C%EC%9B%902.png)
 **회원인 경우**
+![image](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%ED%9A%8C%EC%9B%90.png)
+![image]([https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/DB.png](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN06-FINAL-6Team/blob/main/%EC%B5%9C%EC%A2%85%ED%8F%89%EA%B0%80%20%EC%82%B0%EC%B6%9C%EB%AC%BC/readme%20%EC%82%AC%EC%A7%84/%ED%9A%8C%EC%9B%902.png))
 ## 활용 방안 및 기대효과
 1. 사용자의 요리 고민 해결
    > AI가 사용자 맞춤형 레시피를 추천하여 "오늘 뭐 먹지?"에 대한 고민을 덜어줍니다.
