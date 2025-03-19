@@ -9,9 +9,10 @@ import re
 
 # ✅ YOLO 및 CLIP 모델 로드
 device = "cpu"
+BASE_DIR = os.getcwd()
 
-YOLO_FOOD_MODEL_PATH = r"C:\Users\Playdata\Desktop\SKN06-FINAL-6Team\cook1\chat\runs\detect\train_식재료\weights\best.pt"
-YOLO_FRIDGE_MODEL_PATH = r"C:\Users\Playdata\Desktop\SKN06-FINAL-6Team\cook1\chat\runs\detect\train_냉장고\weights\best.pt"
+YOLO_FOOD_MODEL_PATH = os.path.join(BASE_DIR,"chat","runs","detect","train_식재료","best.pt")
+YOLO_FRIDGE_MODEL_PATH = os.path.join(BASE_DIR,"chat","runs","detect","train_냉장고","best.pt")
 
 # YOLO 모델 로드
 yolo_model_food = YOLO(YOLO_FOOD_MODEL_PATH)
