@@ -16,7 +16,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -70,14 +69,17 @@ WSGI_APPLICATION = 'cook.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+import pymysql
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # MySQL 엔진 사용
-        'NAME': 'cookit',  #aws rds만든 DB 이름
-        'USER': 'ucandoit',  # MySQL 사용자
-        'PASSWORD': 'cookitcookeat',  # aws rds 비밀번호
-        'HOST': 'cookitcookeat.cluster-cfwm602q8xg8.ap-northeast-2.rds.amazonaws.com',  # 로컬 MySQL 사용
-        'PORT': '3306',  # 기본 포트
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'cookit',
+        'USER': 'ucandoit',
+        'PASSWORD': 'cookitcookeat',
+        'HOST': 'cookitcookeat.cluster-cfwm602q8xg8.ap-northeast-2.rds.amazonaws.com',
+        'PORT': '3306',
     }
 }
 

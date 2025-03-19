@@ -50,7 +50,8 @@
         {% endif %}
     
     
-    <form method="POST" enctype="multipart/form-data"></form>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
         <div class="review-card">
             <a href="{% url 'review_list' %}" class="close-btn">✖</a>
 
@@ -79,7 +80,7 @@
             <label for="review_text"></label>
             {{ form.review_text }}
 
-            <button href="{% url 'review_list' %}" class="submit">저장하기</button>
+            <button type="submit" class="submit">저장하기</button>
         </div>
     </form>
     
@@ -176,6 +177,33 @@
             }
         });
 
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
+        document.querySelector(".submit").addEventListener("click", function(event) {
+            event.preventDefault();  // 기본 폼 제출 방지
+
+            let formData = new FormData(document.querySelector("form"));
+
+            fetch("{% url 'review_create' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCSRFToken()  // CSRF 토큰 추가
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                if (data.success) {
+                    window.location.href = "{% url 'review_list' %}";
+                } else {
+                    alert("리뷰 저장 실패!");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        });
     </script>
 </body>
 </html>

@@ -77,7 +77,6 @@ def chat_api(request, session_id):
                     "message": formatted_response,
                     "chat_history": request.session["chat_history"],
                     "detected_ingredients": list(detected_ingredients),
-                    "image_urls": image_urls
                 })
             
             # 로그인 한 사용자
@@ -138,12 +137,13 @@ def chat_api(request, session_id):
 
                 formatted_response = format_markdown(response)
 
-                # 기존 대화 내역을 유지하면서 새 메시지 추가
-                existing_messages.append({"role": "human", "content": text_input})  # 사용자 입력 추가
+                image_html = ""
+                if image_urls:
+                    image_html = ''.join([f'<img src="{url}" alt="user image" style="max-width: 150px; display: block; margin-top:5px;">' for url in image_urls])
+                existing_messages.append({"role": "human", "content": text_input + image_html})
                 existing_messages.append({"role": "ai", "content": formatted_response})  # AI 응답 추가
-
                 existing_messages = existing_messages[-10:]
-                
+
                 # 업데이트된 대화 기록을 저장
                 history_record.messages = json.dumps(existing_messages, ensure_ascii=False)
                 history_record.save()
@@ -165,7 +165,6 @@ def chat_api(request, session_id):
                     "message": formatted_response,
                     "chat_history": existing_messages,
                     "detected_ingredients": list(detected_ingredients),
-                    "image_urls": image_urls,
                     "current_points": current_points,
                     "audio_url": audio_url,
                 })
@@ -428,7 +427,7 @@ def save_user_selected_menus(request, session_id):
         return JsonResponse({"success": False, "error": "Invalid JSON format in chat history"}, status=500)
 
     recipe_pattern = re.compile(r"<h3>\d+\.\s*([^<\n]+)")  # 🚀 정규식 개선
-    img_pattern = re.compile(r'<li>사진:\s*<a href="([^"]+)"')
+    img_pattern = re.compile(r'https://[^"\s<]+')
 
     recipe_names = set()
     recipe_images = {}

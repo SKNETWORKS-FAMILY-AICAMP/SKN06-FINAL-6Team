@@ -41,33 +41,6 @@ class Users(AbstractUser):
     def __str__(self):
         return self.nickname
 
-### 2. LoginSessions 테이블 (로그인 세션 관리)
-class LoginSessions(models.Model):
-    session_id = models.CharField(max_length=255, primary_key=True)  # 세션 고유 ID
-    user = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)  # 로그인한 사용자 (NOT NULL)
-    created_at = models.DateTimeField(auto_now_add=True)  # 로그인 시간
-    expired_at = models.DateTimeField(null=True, blank=True)  # 세션 만료 시간 (NULL 가능)
-
-    def __str__(self):
-        return f"Session {self.session_id} for {self.user.nickname}"
-
-### 3. PointTransaction 테이블 (포인트 변동 내역)
-class PointTransaction(models.Model):
-    TRANSACTION_TYPE_CHOICES = [
-        ('earn', 'Earn'),
-        ('spend', 'Spend'),
-    ]
-
-    transaction_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)  # 포인트 변동 사용자 (NOT NULL)
-    change_amount = models.IntegerField(null=False)  # 포인트 변경 값 (NOT NULL)
-    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, null=False)  # 적립/사용 구분 (NOT NULL)
-    reason = models.CharField(max_length=255, null=False)  # 포인트 변동 사유 (NOT NULL)
-    updated_at = models.DateTimeField(auto_now_add=True)  # 포인트 변경 시간
-
-    def __str__(self):
-        return f"{self.user.nickname} - {self.transaction_type} {self.change_amount} points"
-
 ### 4. AdminLogs 테이블 (관리자 활동 기록)
 class AdminLog(models.Model):
     ACTION_CHOICES = [

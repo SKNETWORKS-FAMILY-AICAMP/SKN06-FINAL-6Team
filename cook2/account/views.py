@@ -346,6 +346,18 @@ def mypage(request):
 @login_required
 def delete_account(request):
     user = request.user
+
+    # 현재 사용자의 세션 삭제 (로그아웃 처리)
+    session_key = request.session.session_key
+    if session_key:
+        Session.objects.filter(session_key=session_key).delete()
+
+    # 사용자 계정 삭제
     user.delete()
+    
+    # 세션 초기화 (추가적인 세션 정보 삭제)
+    request.session.flush()
+    request.session.clear()
+
     messages.success(request, "회원 탈퇴가 완료되었습니다.")
     return redirect('home')

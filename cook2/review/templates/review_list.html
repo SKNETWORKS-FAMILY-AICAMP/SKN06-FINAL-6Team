@@ -87,7 +87,10 @@
                     <img src="{{ review.selected_menu.img_url }}" alt="요리 이미지">
                 </div>
                 <h3 class="review-title">{{ review.selected_menu.menu_name }}</h3>
-                <div class="review-stars">
+                
+                <p class="review-user"><strong></strong>작성자: {{ review.user.nickname }}</p>
+                
+                <div class="review-stars">    
                     {% for i in "12345" %}
                         {% if forloop.counter <= review.rating %}
                             ⭐
@@ -96,7 +99,7 @@
                         {% endif %}
                     {% endfor %}
                 </div>
-                <p class="review-user">{{ review.user.nickname }}</p>
+                
                 <p class="review-views">조회수 {{ review.views }}</p>
             </div>
         {% empty %}
