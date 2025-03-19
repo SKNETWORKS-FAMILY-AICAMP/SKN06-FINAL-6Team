@@ -28,6 +28,7 @@
 
 <!-- Django 폼의 파일 업로드 필드 (숨김 처리) -->
 <div style="display: none;">
+    <input type="file" name="user_photo" id="id_user_photo" onchange="previewProfile(event)">    
     {{ form.user_photo }}
 </div>
 
