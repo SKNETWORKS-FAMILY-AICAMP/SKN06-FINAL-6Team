@@ -101,6 +101,7 @@
         </div>
 
     <script>
+        const isAuthenticated = {{ request.user.is_authenticated|yesno:"true,false" }};
         document.addEventListener("DOMContentLoaded", function () {
             loadChatSessions();
         });
@@ -283,12 +284,12 @@
                     }
                     aiDiv.innerHTML = detectedText + data.message;
 
-                    // 여러 이미지 출력 
-                    if (data.image_urls && data.image_urls.length > 0) {
-                        data.image_urls.forEach(imgSrc => {
-                            aiDiv.innerHTML += `<img src="${imgSrc}" alt="Bot Image">`;
-                        });
-                    }
+                    // // 여러 이미지 출력 
+                    // if (data.image_urls && data.image_urls.length > 0) {
+                    //     data.image_urls.forEach(imgSrc => {
+                    //         aiDiv.innerHTML += `<img src="${imgSrc}" alt="Bot Image">`;
+                    //     });
+                    // }
                     // 소리 버튼 
                     const ttsImage = document.createElement("img");
                     ttsImage.src = "{% static 'imgs/sound.png' %}"; // 기본값: 소리 켜짐
@@ -402,6 +403,15 @@
         });
 
         let selectedImages = [];    // 업로드한 이미지들을 저장할 배열
+        // 이미지 업로드 차단 (비회원)
+        document.getElementById("imageLabel").addEventListener("click", function (e) {
+            if (!isAuthenticated) {
+                e.preventDefault();
+                if (confirm("로그인 후 이용바랍니다.")) {
+                    window.location.href = "{% url 'login' %}";
+                }
+            }
+        });
 
         function previewImages() {
             const imageInput = document.getElementById("imageInput");
@@ -521,7 +531,17 @@
         }
 
         // 마이크 버튼 클릭 이벤트 핸들러 수정 (녹음 or 파일 업로드 선택)
-        document.getElementById("mic-button").addEventListener("click", () => {
+        // 음성 입력 차단 (비회원)
+        document.getElementById("mic-button").addEventListener("click", function (e) {
+            if (!isAuthenticated) {
+                e.preventDefault();
+                if (confirm("로그인 후 이용바랍니다.")) {
+                    window.location.href = "{% url 'login' %}";
+                }
+                return;
+            }
+
+            // 기존 음성 녹음/업로드 로직
             const choice = confirm("직접 음성을 녹음하시겠습니까? (취소 시 음성 파일 업로드)");
             if (choice) {
                 startSpeechRecording();
@@ -529,6 +549,7 @@
                 document.getElementById("audioInput").click();
             }
         });
+
 
         // 음성 파일 업로드 처리
         document.getElementById("audioInput").addEventListener("change", async (event) => {
