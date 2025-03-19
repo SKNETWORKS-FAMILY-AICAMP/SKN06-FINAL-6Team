@@ -13,6 +13,8 @@ from django.contrib.sessions.models import Session
 from django.utils.timezone import now
 from django.http import JsonResponse
 from django.contrib.auth import update_session_auth_hash 
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 
 User = get_user_model()
@@ -201,7 +203,6 @@ def find_pw(request):
             login_id = form.cleaned_data["login_id"]
             name = form.cleaned_data["name"]
             email = form.cleaned_data["email"]
-
             try:
                 user = Users.objects.get(login_id=login_id, name=name, email=email)
                 request.session["reset_email"] = email
@@ -213,26 +214,66 @@ def find_pw(request):
 
     return render(request, "find_pw.html", {"form": form})
 
-def send_otp_email(request):
-    """6자리 OTP 생성 및 이메일 전송"""
-    email = request.session.get("reset_email")
+# def send_otp_email(request):
+#     """6자리 OTP 생성 및 이메일 전송"""
+#     email = request.session.get("reset_email")
 
-    if email:
-        try:
-            user = Users.objects.get(email=email)
-        except Users.DoesNotExist:
-            messages.error(request, "입력한 이메일과 일치하는 계정이 없습니다.")
-            return redirect("find_pw")
+#     if email:
+#         try:
+#             user = Users.objects.get(email=email)
+#         except Users.DoesNotExist:
+#             messages.error(request, "입력한 이메일과 일치하는 계정이 없습니다.")
+#             return redirect("find_pw")
 
-        # 6자리 인증번호 생성
-        otp = "".join(random.choices(string.digits, k=6))
+#         # 6자리 인증번호 생성
+#         otp = "".join(random.choices(string.digits, k=6))
         
-        # Users 테이블의 `verification_code` 필드에 저장
+#         # Users 테이블의 `verification_code` 필드에 저장
+#         user.verification_code = otp
+#         user.verification_expires_at = now() + timedelta(minutes=5)  # 5분 후 만료
+#         user.save()
+
+#         # 이메일 전송
+#         send_mail(
+#             "비밀번호 재설정 인증번호",
+#             f"인증번호: {otp} (5분 내에 입력해주세요.)",
+#             "cookitcookeat@gmail.com",
+#             [email],
+#             fail_silently=False,
+#         )
+
+#         # 인증번호 입력창을 유지하기 위해 세션 저장
+#         request.session["keep_name"] = request.POST.get("name")
+#         request.session["keep_login_id"] = request.POST.get("login_id")
+#         request.session["keep_email"] = request.POST.get("email")
+#         request.session["show_verification"] = True
+
+#         messages.success(request, "인증번호가 이메일로 전송되었습니다! 5분 내에 입력하세요.")
+#         return redirect("find_pw")
+    
+#     else:
+#         return redirect("find_pw") 
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def send_otp_email(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        name = data.get("name")
+        login_id = data.get("login_id")
+        email = data.get("email")
+        
+        try:
+            user = Users.objects.get(login_id=login_id, name=name, email=email)
+        except Users.DoesNotExist:
+            return JsonResponse({"success": False, "message": "입력한 정보와 일치하는 계정이 없습니다."})
+
+        otp = "".join(random.choices(string.digits, k=6))
         user.verification_code = otp
-        user.verification_expires_at = now() + timedelta(minutes=5)  # 5분 후 만료
+        user.verification_expires_at = now() + timedelta(minutes=5)
         user.save()
 
-        # 이메일 전송
         send_mail(
             "비밀번호 재설정 인증번호",
             f"인증번호: {otp} (5분 내에 입력해주세요.)",
@@ -241,15 +282,10 @@ def send_otp_email(request):
             fail_silently=False,
         )
 
-        # 인증번호 입력창을 유지하기 위해 세션 저장
-        request.session["show_verification"] = True
+        return JsonResponse({"success": True})
 
-        messages.success(request, "인증번호가 이메일로 전송되었습니다! 5분 내에 입력하세요.")
-        return redirect("find_pw")
-    
-    else:
-        return redirect("find_pw")
-    
+    return JsonResponse({"success": False, "message": "잘못된 요청입니다."})
+
 def verify_otp(request):
     """사용자가 입력한 OTP를 검증"""
     if request.method == "POST":
