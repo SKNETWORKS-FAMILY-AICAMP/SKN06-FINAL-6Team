@@ -1,0 +1,215 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/review_form.css' %}">
+</head>
+<body>
+    <div class="logo">
+        {% if user.is_authenticated %}
+            <a href="{% url 'review_list' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="로고">
+            </a>
+        {% endif %}
+    </div>
+    
+    <h2>리뷰 작성하기</h2>
+    <div class="header">
+        {% if request.user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
+
+            <div id="myModal" class="modal"> 
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h3>🍪 쿠키 안내</h3>
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+                    <ul>
+                        <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                        <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                        <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                        <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <button onclick="location.href='{% url 'login' %}'" class="btn login-btn">로그인</button>
+        {% endif %}
+    
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="review-card">
+            <a href="{% url 'review_list' %}" class="close-btn">✖</a>
+
+            <select name="selected_menu" id="selected_menu">
+                {% for menu in menus %}
+                    <option value="{{ menu.pk }}" {% if review.selected_menu.pk == menu.pk %}selected{% endif %}>
+                        {{ menu.menu_name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <div class="rating-container">
+                <span class="star" onclick="setRating(1)">★</span>
+                <span class="star" onclick="setRating(2)">★</span>
+                <span class="star" onclick="setRating(3)">★</span>
+                <span class="star" onclick="setRating(4)">★</span>
+                <span class="star" onclick="setRating(5)">★</span>
+                <input type="hidden" name="rating" id="rating-input" value="{{ form.rating.value|default:5 }}">
+            </div>
+
+            <label for="image-upload" class="image-upload-label">
+                <img src="{% static 'imgs/image.png' %}" alt="이미지 업로드 버튼">
+            </label>
+            <input type="file" id="image-upload" class="image-upload" name="images" accept="image/*" multiple>
+            <div id="image-preview"></div>
+            
+            {% if review and review.reviewimages_set.all %}
+                <div class="existing-images">
+                    {% for img in review.reviewimages_set.all %}
+                        <div class="image-container">
+                            <img src="{{ img.image_url.url }}" alt="리뷰 이미지" width="100">
+                            <button type="button" class="delete-image" data-image-id="{{ img.pk }}">x</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <label for="review_text"></label>
+            {{ form.review_text }}
+            
+            <button type="submit">
+                {% if review %}수정하기{% else %}작성하기{% endif %}
+            </button>
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const stars = document.querySelectorAll(".star");
+            const ratingInput = document.getElementById("rating-input");
+
+            function setRating(rating) {
+                ratingInput.value = rating; // 별점 값 저장
+
+                stars.forEach((star, index) => {
+                    if (index < rating) {
+                        star.style.color = "gold"; // 선택한 별 이하 모두 gold
+                    } else {
+                        star.style.color = "gray"; // 나머지는 gray
+                    }
+                });
+            }
+
+            // ⭐ 기존 별점 값 적용 (수정 시)
+            let currentRating = parseInt(ratingInput.value) || 5; // 기본값 5
+            setRating(currentRating);
+
+            // ⭐ 클릭 시 별점 변경
+            stars.forEach((star, index) => {
+                star.addEventListener("click", function () {
+                    setRating(index + 1);
+                });
+            });
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            let submitButton = document.querySelector("form button[type='submit']");
+            if (submitButton) {
+                submitButton.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    let formData = new FormData(document.querySelector("form"));
+
+                    fetch("{% url 'review_create' %}", {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log("✅ 리뷰 저장 성공, 이동 URL:", data.redirect_url);
+                            window.location.href = data.redirect_url;  // ✅ JSON 응답에서 `redirect_url` 받아 이동
+                        } else {
+                            alert("리뷰 저장 실패: " + (data.error || "알 수 없는 오류"));
+                        }
+                    })
+                    .catch(error => console.error("Error:", error));
+                });
+            }
+        });
+
+        // 이미지 삭제 기능 수정
+        document.querySelectorAll(".delete-image").forEach(button => {
+            button.addEventListener("click", function () {
+                let imageId = this.dataset.imageId;
+                let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                fetch(`/review/delete_image/${imageId}/`, {  // ✅ URL 수정
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.parentElement.remove();  // ✅ UI에서도 삭제
+                    } else {
+                        alert("이미지 삭제 실패: " + (data.error || "알 수 없는 오류"));
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+
+        // 이미지 업로드 미리보기 기능 수정
+        document.getElementById("image-upload").addEventListener("change", function (event) {
+            let previewContainer = document.getElementById("image-preview");
+            previewContainer.innerHTML = "";
+            let files = event.target.files;
+
+            for (let i = 0; i < files.length; i++) {
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    let imgContainer = document.createElement("div");
+                    imgContainer.classList.add("image-container");
+
+                    let img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.classList.add("image-preview-item");
+
+                    let deleteButton = document.createElement("button");
+                    deleteButton.innerText = "x";
+                    deleteButton.classList.add("delete-image");
+                    deleteButton.addEventListener("click", function () {
+                        imgContainer.remove();
+                    });
+
+                    imgContainer.appendChild(img);
+                    imgContainer.appendChild(deleteButton);
+                    previewContainer.appendChild(imgContainer);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        });
+    </script>
+</body>
+</html>

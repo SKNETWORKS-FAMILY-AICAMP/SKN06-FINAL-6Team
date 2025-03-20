@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body>
+    <!-- 왼쪽 상단의 로고 -->
+    <div class="logo">
+        <img src="{% static 'imgs/logo.png' %}" alt="LOGO" class="logo" onclick="location.href='{% url 'home' %}'">
+    </div>
+    
+    <div class="container">
+        <h1>로그인</h1>
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            <div class="input-group">
+                <input type="text" name="login_id" placeholder="아이디" required>
+            </div>
+
+            <div class="input-group">
+                <input type="password" name="password" placeholder="비밀번호" required>
+                <img src="{% static 'imgs/noeye.png' %}" alt="비밀번호 표시" 
+                     class="toggle-password"
+                     onmousedown="showPassword(this)" 
+                     onmouseup="hidePassword(this)" 
+                     onmouseleave="hidePassword(this)">
+            </div>
+
+            <!-- 로그인 버튼 -->
+            <div class="button-container">
+                <button type="submit" class="login-btn">Sign in</button>
+            </div>
+
+            <!-- 아이디 찾기, 비밀번호 찾기, 회원가입 버튼 -->
+            <div class="links">
+                <a href="{% url 'find_id' %}">아이디 찾기</a>
+                <a href="{% url 'find_pw' %}">비밀번호 찾기</a>
+                <a href="{% url 'signup' %}">회원가입</a>
+            </div>
+
+            <div class="separator">
+                <span>OR</span>
+            </div>
+        </form>
+
+
+        <div class="kakao-btn">
+            {% if request.user.is_authenticated and request.session.kakao_id %}
+                <p>환영합니다, {{ request.session.kakao_nickname }}님!</p>
+                <a href="{% url 'kakao_logout' %}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% else %}
+                <a href="{% url 'kakao_login' %}">
+                    <img src="{% static 'imgs/kakao.png' %}" alt="카카오 로그인 버튼">
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const loginForm = document.querySelector("form");  // 로그인 폼 선택
+
+            loginForm.addEventListener("submit", function(event) {
+                event.preventDefault();  // 기본 제출 막기
+
+                const formData = new FormData(loginForm);  // 폼 데이터 가져오기
+                fetch("{% url 'login' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect_url;  // 성공하면 채팅 페이지로 이동
+                    } else {
+                        if (confirm(data.message)) {
+                            // 사용자가 '확인'을 누르면 입력 필드를 초기화
+                            loginForm.reset();
+                        }
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+
+        function showPassword(button) {
+            var input = button.previousElementSibling;
+            input.type = "text";
+            button.src = "{% static 'imgs/eye.png' %}";
+        }
+
+        function hidePassword(button) {
+            var input = button.previousElementSibling;
+            input.type = "password";
+            button.src = "{% static 'imgs/noeye.png' %}";
+        }
+    </script>
+</body>
+</html>
