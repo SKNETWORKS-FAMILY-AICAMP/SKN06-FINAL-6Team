@@ -1,0 +1,262 @@
+/* 전체 화면 flex 배치 */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+}
+
+/* 메인 컨테이너 (왼쪽 배경 + 오른쪽 콘텐츠) */
+.container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* 제목 스타일 */
+h2 {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    font-size: 24px; /* 글씨 크기 */
+    font-weight: bold; /* 글씨 굵기 */
+    margin-bottom: 20px; /* 아래 여백 */
+    color: #000; /* 글씨 색 */
+    text-align: center;
+}
+
+.close-btn {
+    position: absolute;
+    top: 30px;
+    right: 24px;
+    background: none;
+    border: none;
+    font-size: 25px;
+    cursor: pointer;
+}
+
+/* 왼쪽 배경 영역 */
+.left-section {
+    width: 50%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 50px;
+}
+
+/* 오른쪽 콘텐츠 영역 */
+.right-section {
+    width: 50%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* 로고 스타일 */
+.logo  img{
+    position: absolute;
+    width: 70px;
+    height: 65px;
+    left: 24px;
+    top: 18px;
+    cursor: pointer;
+    z-index: 999;
+}
+
+/* 제목 스타일 */
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* 프로필 컨테이너 */
+.profile-container {
+    width: 90%;
+    max-width: 500px;
+    background: white;
+    border: 2px solid #ccc;  /* 🔹 테두리 추가 */
+    border-radius: 15px;  /* 🔹 둥글게 */
+    padding: 25px;  /* 🔹 내부 여백 추가 */
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 프로필 섹션 (사진 + 정보 + 탈퇴 버튼) */
+.profile-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 사진 왼쪽, 버튼 오른쪽 */
+    width: 100%;
+    padding-bottom: 15px;
+}
+
+.profile {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.profile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.profile:hover::after {
+    content: "이미지 변경";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 0 0 50% 50%;
+    pointer-events: none;
+}
+
+
+/* 프로필 정보 (이름 + 쿠키) */
+.profile-info {
+    display: flex;
+    flex-direction: column; /* 🔹 세로 정렬 */
+    justify-content: center;
+    align-items: flex-start; /* 🔹 왼쪽 정렬 */
+    flex-grow: 1;  /* 🔹 가변 크기 */
+    margin-left: 15px; /* 🔹 프로필 사진과 간격 */
+}
+
+/* 사용자 이름 */
+.user-name {
+    font-size: 35px;
+    font-weight: bold;
+}
+
+/* 쿠키 포인트 스타일 */
+.point-container {
+    font-size: 17px;
+    color: black;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 쿠키 부족 경고 메세지 */
+.cookie-warning {
+    font-size: 14px;
+    color: #fb9f9f;
+    margin-top: 5px;
+}
+
+/* 탈퇴 버튼 스타일 */
+.btn-delete {
+    padding: 5px 12px;
+    font-size: 12px;
+    border: none;
+    border-radius: 5px;
+    background-color: #FBD2D2;
+    color: white;
+    cursor: pointer;
+    align-self: center;
+    text-decoration: none;
+}
+
+.btn-delete:hover {
+    background-color: #fb9f9f;
+}
+
+.profile-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 사용자 정보 수정 폼 */
+form {
+    width: 100%;
+}
+
+.form-group-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.form-group {
+    width: 48%;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* 읽기 전용 필드 */
+.no-input {
+    padding: 8px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+/* 입력 필드 */
+.form-group input[type="text"],
+.form-group input[type="password"] {
+    width: 80%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.form-email-row {
+    display: flex;
+    justify-content: space-between; /* 🔹 이메일 왼쪽, 버튼 오른쪽 */
+    align-items: center; /* 🔹 수직 정렬 */
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+/* 저장 버튼 스타일 */
+.btn-save {
+    width: 20%;
+    padding: 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    background-color: #c2cff5;
+    color: white;
+    cursor: pointer;
+}
+.btn-save:hover {
+    background-color: #A2B5E6;
+}
+
+#id_user_photo {
+    display: none;
+}

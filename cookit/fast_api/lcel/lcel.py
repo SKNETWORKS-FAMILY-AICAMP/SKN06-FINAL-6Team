@@ -11,7 +11,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import ConfigurableFieldSpec, RunnableLambda, chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers import StrOutputParser
 
 from dotenv import load_dotenv
 
@@ -62,6 +61,8 @@ def intent(query):
     return chk_intent_chain
 
 def mkch(isref=True, isfun=True, isman=True):
+    global retriever
+    retriever = load_retriever(isref, isfun, isman)
     def chain_runner(x):
         selected_chain = select_chain(x)
         selection = importlib.import_module("utils.agents")

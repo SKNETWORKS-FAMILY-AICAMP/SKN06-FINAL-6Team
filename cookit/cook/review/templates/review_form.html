@@ -1,39 +1,121 @@
-{% extends "base.html" %}
-{% block content %}
-    <h2>{% if form.instance.pk %}리뷰 수정{% else %}리뷰 작성{% endif %}</h2>
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href= "{% static 'css/review_form.css' %}">
+</head>
+<body>
+    <div class="logo">
+        {% if user.is_authenticated %}
+            <a href="{% url 'review_list' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="로고">
+            </a>
+        {% endif %}
+    </div>
+    
+    <h2>리뷰 작성하기</h2>
+    <div class="header">
+        {% if request.user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
+            </div>
 
+            <div id="myModal" class="modal"> 
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h3>🍪 쿠키 안내</h3>
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+                    <ul>
+                        <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                        <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                        <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                        <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <botton href="{% url 'login' %}" class="btn login-btn">로그인</botton>
+        {% endif %}
+    
+    
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
+        <div class="review-card">
+            <a href="{% url 'review_list' %}" class="close-btn">✖</a>
 
-        <label for="selected_menu">메뉴명:</label>
-        <select name="selected_menu" id="selected_menu">
-            {% for menu in menus %}
-                <option value="{{ menu.menu }}" {% if form.instance.selected_menu == menu %}selected{% endif %}>
-                    {{ menu.menu_name }}
-                </option>
-            {% endfor %}
-        </select>
+            <select name="selected_menu" id="selected_menu">
+                {% for menu in menus %}
+                    <option value="{{ menu.menu }}" {% if form.instance.selected_menu == menu %}selected{% endif %}>
+                        {{ menu.menu_name }}
+                    </option>
+                {% endfor %}
+            </select>
 
-        <label for="rating">평점:</label>
-        <div class="star-rating">
-            {% for i in "12345"|make_list %}
-                <span class="star" data-value="{{ forloop.counter }}">★</span>
-            {% endfor %}
+            <div class="rating-container">
+                <span class="star" onclick="setRating(1)">★</span>
+                <span class="star" onclick="setRating(2)">★</span>
+                <span class="star" onclick="setRating(3)">★</span>
+                <span class="star" onclick="setRating(4)">★</span>
+                <span class="star" onclick="setRating(5)">★</span>
+                <input type="hidden" name="rating" id="rating-input" value="{{ form.rating.value|default:5 }}">
+                <label for="image-upload" class="image-upload-label">
+                    <img src="{% static 'imgs/image.png' %}" alt="이미지 업로드 버튼">
+                </label>
+                <input type="file" id="image-upload" class="image-upload" name="images" accept="image/*" multiple>
+            </div>
+            <div id="image-preview"></div>
+                
+            <label for="review_text"></label>
+            {{ form.review_text }}
+
+            <button type="submit" class="submit">저장하기</button>
         </div>
-        <input type="hidden" name="rating" id="rating-input" value="{{ form.rating.value|default:5 }}">
-
-        <label for="review_text">리뷰 내용:</label>
-        {{ form.review_text }}
-
-        <label for="images">이미지 업로드:</label>
-        <input type="file" name="images" id="images" multiple>
-
-        <button type="submit">저장</button>
     </form>
-
-    <a href="{% url 'review_list' %}">취소</a>
-
+    
     <script>
+        function closeModal() {
+            document.querySelector('.review-modal').style.display = 'none';
+        }
+
+        function setRating(rating) {
+            let stars = document.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                star.style.color = index < rating ? '#ffcc00' : '#ccc';
+            });
+        }
+        function toggleDropdown() {
+            document.getElementById('dropdown-menu').classList.toggle('show');
+        }
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("dropdown-menu");
+            let profileContainer = document.querySelector(".profile-img-container");
+
+            if (!profileContainer.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove("show");
+            }
+        });
+
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+        
+        // 리뷰
         document.addEventListener("DOMContentLoaded", function () {
             const stars = document.querySelectorAll(".star-rating .star");
             const ratingInput = document.getElementById("rating-input");
@@ -76,32 +158,52 @@
 
             updateStars(parseFloat(ratingInput.value));
         });
+
+        // 사진 미리보기
+        document.getElementById("image-upload").addEventListener("change", function(event) {
+            let previewContainer = document.getElementById("image-preview");
+            previewContainer.innerHTML = ""; // 기존 미리보기 초기화
+            let files = event.target.files;
+
+            for (let i = 0; i < files.length; i++) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.classList.add("image-preview-item");
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        });
+
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
+        document.querySelector(".submit").addEventListener("click", function(event) {
+            event.preventDefault();  // 기본 폼 제출 방지
+
+            let formData = new FormData(document.querySelector("form"));
+
+            fetch("{% url 'review_create' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCSRFToken()  // CSRF 토큰 추가
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                if (data.success) {
+                    window.location.href = "{% url 'review_list' %}";
+                } else {
+                    alert("리뷰 저장 실패!");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        });
     </script>
-
-    <style>
-        .star-rating {
-            font-size: 24px;
-            display: flex;
-            gap: 5px;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .star {
-            color: gray;
-            position: relative;
-        }
-
-        .star.selected {
-            color: gold;
-        }
-
-        .star.half-selected::before {
-            content: "★";
-            color: gold;
-            position: absolute;
-            width: 50%;
-            overflow: hidden;
-        }
-    </style>
-{% endblock %}
+</body>
+</html>

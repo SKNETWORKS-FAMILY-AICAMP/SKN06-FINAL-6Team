@@ -10,8 +10,8 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from lcel.lcel import mkch
-from utils.speech import SpeechProcessor
-from utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
+from fast_api.utils.speech import SpeechProcessor
+from fast_api.utils.image_detect import detect_ingredients  # YOLO + CLIP 감지 함수
 from chat.models import Chats, ChatSession, HistoryChat
 
 

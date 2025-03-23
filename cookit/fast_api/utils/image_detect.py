@@ -8,7 +8,7 @@ from torchvision import transforms
 
 # ✅ YOLO 및 CLIP 모델 로드
 device = "cpu"
-
+print(os.getcwd())
 YOLO_FOOD_MODEL_PATH = "./runs/detect/train_식재료/weights/best.pt"
 YOLO_FRIDGE_MODEL_PATH = "./runs/detect/train_냉장고/weights/best.pt"
 

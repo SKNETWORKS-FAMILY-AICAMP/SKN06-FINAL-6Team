@@ -1,0 +1,25 @@
+services:
+  django:
+    build: ./cook
+    container_name: cookit_django
+    restart: always
+    volumes:
+      - ./cook:/app
+      - ./media:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - fastapi
+
+  fastapi:
+    build: .
+    container_name: cookit_fastapi
+    restart: always
+    volumes:
+      - ./fast_api:/app
+      - ./media:/app/media
+      - ./cook:/app/cook
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./fast_api/.env

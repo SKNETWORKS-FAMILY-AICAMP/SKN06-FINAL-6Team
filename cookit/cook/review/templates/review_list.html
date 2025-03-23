@@ -1,107 +1,177 @@
-{% extends "base.html" %}
-
-{% block content %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/review_list.css' %}">
+</head>
+<body>
+    <div class="logo">
+        {% if user.is_authenticated %}
+            <a href="{% url 'chat' %}">
+                <img src="{% static 'imgs/logo.png' %}" alt="로고">
+            </a>
+        {% endif %}
+    </div>
+    
     <h2>리뷰 게시판</h2>
-    <a href="{% url 'review_create' %}">리뷰 작성</a>
-
-    <form method="GET">
-        <input type="text" name="query" placeholder="메뉴 검색" value="{{ query }}">
-        <button type="submit">검색</button>
-    </form>
-
-    <label for="sort">정렬:</label>
-    <select id="sort" onchange="sortReviews(this.value)">
-        <option value="latest" {% if sort == "latest" %}selected{% endif %}>최신순</option>
-        <option value="views" {% if sort == "views" %}selected{% endif %}>조회순</option>
-        <option value="rating" {% if sort == "rating" %}selected{% endif %}>별점순</option>
-    </select>
-
-    <div class="review-list">
-        {% for review in reviews %}
-            <div class="review-item">
-                <a href="{% url 'review_detail' review.pk %}" class="menu-name">
-                    {{ review.selected_menu.menu_name }}
-                </a>
-
-                <a href="{% url 'user_reviews' review.user.username %}" class="author-name">
-                    {{ review.user.nickname }}
-                </a>
-
-                <div class="rating">
-                    <span class="star-display">★</span>
-                    <span class="rating-value">{{ review.rating }}</span>
-                </div>
-
-                <p class="review-text">
-                    {{ review.review_text|truncatewords:20 }}
-                </p>
-
-                <p class="views-count">👁️ 조회수: {{ review.views }}</p>
+    <div class="header">
+        {% if request.user.is_authenticated %}
+            <img src="{% static 'imgs/cookie.png' %}" alt="쿠키 아이콘" class="cookie-icon" onclick="openModal()">
+            <div class="profile-img-container" onclick="toggleDropdown()">
+                {% if request.user.user_photo %}
+                    <img src="{{ request.user.user_photo.url }}" alt="프로필 사진" class="profile-img">
+                {% else %}
+                    <img src="{% static 'imgs/user.png' %}" alt="기본 프로필 사진" class="profile-img">
+                {% endif %}
             </div>
-        {% empty %}
-            <p>작성된 리뷰가 없습니다.</p>
-        {% endfor %}
+
+            <div id="myModal" class="modal"> 
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h3>🍪 쿠키 안내</h3>
+                    <p>현재 보유 중인 쿠키: <strong id="cookie-count">{{ request.user.points|default:'0' }}개</strong></p>
+                    <ul>
+                        <li><span>💡</span> 회원가입 시 기본 <strong>200개</strong> 제공</li>
+                        <li><span>💡</span> 리뷰 작성 시 <strong>10개</strong> 제공</li>
+                        <li><span>💡</span> 사진 첨부 리뷰 작성 시 <strong>15개</strong> 제공</li>
+                        <li><span>💡</span> 챗 이용 시 <strong>10개</strong> 차감</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="{% url 'mypage' %}">My Page</a>
+                <a href="{% url 'logout' %}" class="logout">로그아웃</a>
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn login-btn">로그인</a>
+        {% endif %}
+    </div>
+    
+    <!-- 검색, 작성, 정렬 그룹 -->
+    <div class="top-controls">
+        <!-- 검색 영역 -->
+        <div class="search-container">
+            <input type="text" class="search-box" placeholder="메뉴명을 검색하세요.">
+            <button class="search-btn">
+                <img src="{% static 'imgs/search.png' %}" alt="검색 버튼">
+            </button>
+        </div>
+        <!-- 작성 버튼 -->
+        <div class="write-btn">
+            <img src="{% static 'imgs/write.png' %}" alt="LOGO" onclick="location.href='{% url 'review_create' %}'">
+        </div>
+        
+        <!-- 정렬 옵션 -->
+        <div class="sort-container">
+            <span class="sort-option">최신순</span>
+            <button class="sort-arrow" onclick="sorttoggleDropdown()">
+                <img src="{% static 'imgs/under.png' %}" alt="화살표 버튼">
+            </button>
+            <div class="sort-dropdown" id="sortDropdown">
+                <span class="sort-item" onclick="selectSortOption(this)">최신순</span>
+                <span class="sort-item" onclick="selectSortOption(this)">별점순</span>
+                <span class="sort-item" onclick="selectSortOption(this)">조회순</span>
+            </div>
+        </div>
+        
     </div>
 
+    <!-- 리뷰 목록 -->
+    <div class="reviews-grid">
+        {% for review in reviews %}
+            <div class="review-card">
+                <div class="review-image">
+                    <img src="{{ review.selected_menu.img_url }}" alt="요리 이미지">
+                </div>
+                <h3 class="review-title">{{ review.selected_menu.menu_name }}</h3>
+                
+                <p class="review-user"><strong></strong>작성자: {{ review.user.nickname }}</p>
+                
+                <div class="review-stars">    
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= review.rating %}
+                            ⭐
+                        {% else %}
+                            ☆
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                
+                <p class="review-views">조회수 {{ review.views }}</p>
+            </div>
+        {% empty %}
+            <p>검색 결과가 없습니다.</p>
+        {% endfor %}
+    </div>
+    
     <script>
+        // 리뷰 목록
+        function toggleSortDropdown() {
+            document.getElementById('sortDropdown').classList.toggle('show');
+        }
+    
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("sortDropdown");
+            let button = document.querySelector(".sort-arrow");
+    
+            if (!button.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove("show");
+            }
+        });
+
+        // 상단바
+        function toggleDropdown() {
+            document.getElementById('dropdown-menu').classList.toggle('show');
+        }
+
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("dropdown-menu");
+            let profileContainer = document.querySelector(".profile-img-container");
+
+            if (!profileContainer.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove("show");
+            }
+        });
+
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+
+        // 정렬
+        function sorttoggleDropdown() {
+            let dropdown = document.getElementById("sortDropdown");
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        }
+
         function sortReviews(sortValue) {
             const queryParams = new URLSearchParams(window.location.search);
-            queryParams.set('sort', sortValue);
+            queryParams.set('sort', sortValue || 'latest'); 
             window.location.search = queryParams.toString();
         }
-    </script>
 
-    <style>
-        .review-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        // 드롭다운 옵션 선택 시 텍스트 변경 & 드롭다운 숨기기
+        function selectSortOption(element) {
+            document.querySelector(".sort-option").textContent = element.textContent;
+            document.getElementById("sortDropdown").style.display = "none";
         }
-        .review-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            flex-wrap: wrap;
-        }
-        .menu-name, .author-name {
-            width: 150px;
-            text-align: center;
-            font-weight: bold;
-            border: 1px solid black;
-            padding: 5px;
-            text-decoration: none;
-            color: black;
-        }
-        .author-name:hover {
-            color: blue;
-            text-decoration: underline;
-        }
-        .rating {
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            user-select: none;
-        }
-        .star-display {
-            color: gold;
-        }
-        .rating-value {
-            font-size: 20px;
-            color: black;
-            font-weight: bold;
-        }
-        .review-text {
-            flex: 1;
-            font-size: 14px;
-            color: #555;
-        }
-        .views-count {
-            font-size: 14px;
-            color: gray;
-        }
-    </style>
-{% endblock %}
+
+        // 다른 곳 클릭 시 드롭다운 숨기기
+        document.addEventListener("click", function (event) {
+            let dropdown = document.getElementById("sortDropdown");
+            let container = document.querySelector(".sort-container");
+
+            if (!container.contains(event.target)) {
+                dropdown.style.display = "none";
+            }
+        });
+
+    </script>
+</body>
+</html>

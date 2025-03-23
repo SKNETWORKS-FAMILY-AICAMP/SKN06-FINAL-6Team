@@ -41,7 +41,7 @@ class Users(AbstractUser):
     def __str__(self):
         return self.nickname
 
-### 2. AdminLogs 테이블 (관리자 활동 기록)
+### 4. AdminLogs 테이블 (관리자 활동 기록)
 class AdminLog(models.Model):
     ACTION_CHOICES = [
         ('modify_points', 'Modify Points'),

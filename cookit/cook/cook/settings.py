@@ -12,10 +12,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-tr=%p*wzknz)y4cxa4#o1_-@vlb300q3r8kc9upj!*=^u*0r)n'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['3.39.86.191', 'localhost', '127.0.0.1', '*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://3.39.86.191',
+    'http://localhost',
+    'http://127.0.0.1'
+]
 
 # Application definition
 
@@ -70,13 +75,21 @@ WSGI_APPLICATION = 'cook.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+import pymysql
+pymysql.install_as_MySQLdb()
+from dotenv import dotenv_values
+
+MYSQL_HOST=dotenv_values()["MYSQL_HOST"]
+MYSQL_USER=dotenv_values()["MYSQL_USER"]
+MYSQL_PASSWORD=dotenv_values()["MYSQL_PASSWORD"]
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'cookit',
-        'USER': 'ucandoit',
-        'PASSWORD': '',
-        'HOST': '',
+        'USER': MYSQL_USER,
+        'PASSWORD': MYSQL_PASSWORD,
+        'HOST': MYSQL_HOST,
         'PORT': '3306',
     }
 }
@@ -130,8 +143,10 @@ AUTH_USER_MODEL = 'account.Users'
 KAKAO_REST_API_KEY = 'cef73be738ef09d08640bcdfa716d4dc'
 
 # 미디어 파일 설정 추가
-MEDIA_URL = '/media/' 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../media/"))
 
 # 이메일 설정 (Gmail 예시)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

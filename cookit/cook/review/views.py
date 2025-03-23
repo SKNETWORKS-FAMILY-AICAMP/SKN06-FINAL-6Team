@@ -5,15 +5,17 @@ from django.http import JsonResponse
 from .models import UserReviews, ReviewImages, Users, ReviewComments
 from chat.models import UserSelectedMenus
 from .forms import ReviewForm
+from django.views.decorators.csrf import csrf_exempt
 
 # 리뷰 목록 보기 (검색 & 정렬)
 def review_list(request):
     query = request.GET.get("query", "").strip()
     sort = request.GET.get("sort", "latest")
 
-    reviews = UserReviews.objects.all()
+    reviews = UserReviews.objects.select_related("user", "selected_menu").all()
+    
     if query:
-        reviews = reviews.filter(selected_menu__menu_name__icontains=query)  # ✅ 필드명 수정
+        reviews = reviews.filter(selected_menu__menu_name__icontains=query) 
     
     sort_options = {
         "views": "-views",
@@ -31,6 +33,7 @@ def review_detail(request, pk):
     return render(request, "review_detail.html", {"review": review})
 
 # 리뷰 작성 (다중 이미지 업로드 가능)
+@csrf_exempt
 @login_required
 def review_create(request):
     if request.method == "POST":
@@ -41,21 +44,24 @@ def review_create(request):
             review = form.save(commit=False)
             review.user = request.user
 
-            # ✅ 선택한 메뉴 정보 저장
-            selected_menu = request.POST.get("selected_menu")
-            if selected_menu:
-                review.selected_menu = get_object_or_404(UserSelectedMenus, pk=selected_menu)
-
+            # 선택한 메뉴 정보 저장
+            selected_menu_id = request.POST.get("selected_menu")
+            if selected_menu_id:
+                selected_menu = get_object_or_404(UserSelectedMenus, menu_name=selected_menu_id, user=request.user)
+                review.selected_menu = selected_menu
             review.save()
 
             for file in files:
                 ReviewImages.objects.create(review=review, image_url=file)
 
-            return redirect("review_detail", pk=review.pk)
+            return redirect("review_list", pk=review.pk)
     else:
         form = ReviewForm()
+
+    # 현재 로그인한 사용자의 저장된 메뉴 리스트 가져오기
+    menus = UserSelectedMenus.objects.filter(user=request.user)    
     
-    return render(request, "review_form.html", {"form": form})
+    return render(request, "review_form.html", {"form": form, "menus": menus})
 
 # 리뷰 수정 (기존 이미지 유지 + 새 이미지 추가 가능)
 @login_required

@@ -2,22 +2,24 @@ import importlib
 from textwrap import dedent
 
 from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain_community.tools import TavilySearchResults
 from langchain_openai import ChatOpenAI
+from langchain.tools import Tool
 from langchain_core.tools import tool
 from langchain_core.runnables import chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_community.tools import TavilySearchResults
-from langchain.tools import Tool
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# llm 모델 호출
 model = ChatOpenAI(model="gpt-4o-mini")
+# retriever 호출
 retrievers = importlib.import_module('lcel.lcel')
 if hasattr(retrievers, "retriever"):
     retriever = getattr(retrievers, "retriever")
 
-tavily_client = TavilySearchResults(max_results=1)
 
 def search_tavily_recipe(query):
     """Tavily 웹 검색을 이용해 레시피 관련 첫 번째 블로그 URL을 가져오는 함수"""
@@ -28,8 +30,18 @@ def search_tavily_recipe(query):
         return results[0]["url"]  # 첫 번째 결과 URL 반환
     return "검색 결과 없음"
 
+tavily_client = TavilySearchResults(max_results=1)
 tavily_search = Tool(name="Tavily Recipe Search", func=search_tavily_recipe, description="Tavily 검색을 이용해 레시피 관련 첫 번째 블로그 URL을 가져오는 도구")
 
+@tool
+def menu_search(query:str):
+    """사용자 의도에 맞게 변형한 query로 retriever를 실행하는 도구"""
+    result = retriever.invoke(query)
+    module = importlib.import_module('lcel.lcel')
+    format_docs = getattr(module, "format_docs")
+    return format_docs(result) if result else [] if len(result) else None
+
+# 2-1. 기본 질문일 경우
 @chain
 def normal(query):
     # i. retriever에 쿼리 전달 및 context 저장(format_docs에서 실행)
@@ -61,6 +73,7 @@ def normal(query):
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
     return agent_executor
 
+# 2-2. 이전 질문의 파생 질문일 경우
 @chain
 def derived(query):
     # i. history + 이전 질문 context llm에 전달
@@ -70,11 +83,13 @@ def derived(query):
         다음 조건에 맞춰서 답변해.
         
         # 조건
-        1. 사용자가 이전에 추천해준 요리 목록에서 요리를 고르면 `history`와 `content`를 참고해 해당 요리의 레시피와 영상을 알려준다.
+        1. 사용자가 이전(history)에 추천해준 요리 목록에서 요리를 고르면 `history`와 `content`를 참고해 해당 요리의 레시피와 영상을 알려준다.
         1-1. `_collection_name` key의 value가 `funs`, `ref 중 하나인 경우 요리 이름은 변형하지 않고 그대로 대답한다.
         1-2. 영상은 요리정보의 `video` key에 있다. 반드시 답변하는 요리와 같은 id의 `video` key의 value를 알려준다. 다른 요리의 것은 절대 알려주면 안된다. 답변하는 요리에 `video`가 없거나 값이 없으면(빈문자열이면) 제공하지 않는다.
         
-        2. 이전 질문에서 대체할 수 있는 재료 등의 질문이 들어오면 질문에 맞는 대답을 알려준다.
+        2. content와 history로 적절한 대답을 할 수 없다면 `menu_search`tool을 실행한다.
+
+        3. 이전 질문에서 대체할 수 있는 재료 등의 질문이 들어오면 질문에 맞는 대답을 알려준다.
         """))),
         MessagesPlaceholder(variable_name="history", optional=True),
         MessagesPlaceholder(variable_name="content", optional=True),
